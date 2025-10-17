@@ -181,12 +181,35 @@ class MyApp extends StatelessWidget {
 }
 
 // Wrapper to show login or main app based on auth state
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    // Check for existing auth token when app starts
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SpotifyAuthService>().checkAuthStatus();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final authService = context.watch<SpotifyAuthService>();
+    
+    // Show loading while checking auth status
+    if (authService.isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
     
     if (authService.isAuthenticated) {
       return const MainNavigator();

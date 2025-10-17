@@ -35,6 +35,11 @@ class SpotifyAuthService extends ChangeNotifier {
     _loadStoredTokens();
   }
   
+  // Public method to check auth status (calls _loadStoredTokens)
+  Future<void> checkAuthStatus() async {
+    await _loadStoredTokens();
+  }
+  
   // Generate random string for PKCE
   String _generateRandomString(int length) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
