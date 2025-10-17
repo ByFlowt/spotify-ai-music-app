@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/spotify_auth_service.dart';
+import '../services/theme_manager.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -10,21 +11,13 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  late ThemeMode _currentThemeMode;
-  bool _notificationsEnabled = true;
-  bool _analyticsEnabled = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentThemeMode = ThemeMode.system;
-  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final authService = context.watch<SpotifyAuthService>();
+    final themeManager = context.watch<ThemeManager>();
 
     return Scaffold(
       body: SafeArea(
@@ -85,41 +78,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     // Appearance Section
                     _buildSectionTitle('Appearance', colorScheme, textTheme),
                     const SizedBox(height: 12),
-                    _buildThemeCard(context, colorScheme, textTheme),
-                    const SizedBox(height: 24),
-
-                    // Preferences Section
-                    _buildSectionTitle('Preferences', colorScheme, textTheme),
-                    const SizedBox(height: 12),
-                    _buildToggleCard(
-                      context,
-                      Icons.notifications_outlined,
-                      'Notifications',
-                      'Get updates and recommendations',
-                      _notificationsEnabled,
-                      (value) {
-                        setState(() {
-                          _notificationsEnabled = value;
-                        });
-                      },
-                      colorScheme,
-                      textTheme,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildToggleCard(
-                      context,
-                      Icons.analytics_outlined,
-                      'Analytics',
-                      'Help us improve the app',
-                      _analyticsEnabled,
-                      (value) {
-                        setState(() {
-                          _analyticsEnabled = value;
-                        });
-                      },
-                      colorScheme,
-                      textTheme,
-                    ),
+                    _buildThemeCard(context, colorScheme, textTheme, themeManager),
                     const SizedBox(height: 24),
 
                     // Account Section
@@ -204,7 +163,14 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildThemeCard(BuildContext context, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildThemeCard(
+    BuildContext context,
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+    ThemeManager themeManager,
+  ) {
+    final currentMode = themeManager.themeMode;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -242,6 +208,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   Icons.brightness_auto_rounded,
                   colorScheme,
                   textTheme,
+                  currentMode,
+                  themeManager,
                 ),
                 const SizedBox(width: 12),
                 _buildThemeOption(
@@ -251,6 +219,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   Icons.brightness_7_rounded,
                   colorScheme,
                   textTheme,
+                  currentMode,
+                  themeManager,
                 ),
                 const SizedBox(width: 12),
                 _buildThemeOption(
@@ -260,6 +230,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   Icons.brightness_4_rounded,
                   colorScheme,
                   textTheme,
+                  currentMode,
+                  themeManager,
                 ),
               ],
             ),
@@ -276,15 +248,20 @@ class _SettingsPageState extends State<SettingsPage> {
     IconData icon,
     ColorScheme colorScheme,
     TextTheme textTheme,
+    ThemeMode currentMode,
+    ThemeManager themeManager,
   ) {
-    final isSelected = _currentThemeMode == mode || 
-        (mode == ThemeMode.system && _currentThemeMode == ThemeMode.system);
+    final isSelected = currentMode == mode;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentThemeMode = mode;
-        });
+      onTap: () async {
+        if (themeManager.themeMode == mode) {
+          return;
+        }
+        await themeManager.setThemeMode(mode);
+        if (!mounted) {
+          return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Theme set to $label'),
@@ -318,67 +295,6 @@ class _SettingsPageState extends State<SettingsPage> {
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleCard(
-    BuildContext context,
-    IconData icon,
-    String title,
-    String subtitle,
-    bool value,
-    Function(bool) onChanged,
-    ColorScheme colorScheme,
-    TextTheme textTheme,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withOpacity(0.5),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              color: colorScheme.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  subtitle,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: colorScheme.primary,
           ),
         ],
       ),
