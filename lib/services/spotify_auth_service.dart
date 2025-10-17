@@ -347,17 +347,28 @@ class SpotifyAuthService extends ChangeNotifier {
     final clientId = ApiConfig.spotifyClientId;
     final clientSecret = ApiConfig.spotifyClientSecret;
     
+    // Build request body - PKCE flow doesn't require client_secret
+    final Map<String, String> requestBody = {
+      'grant_type': 'authorization_code',
+      'code': code,
+      'redirect_uri': redirectUri,
+      'client_id': clientId,
+      'code_verifier': codeVerifier,
+    };
+    
+    // Only add client_secret if it's available (native platforms)
+    // Web uses PKCE which doesn't require client_secret
+    if (clientSecret.isNotEmpty && !kIsWeb) {
+      requestBody['client_secret'] = clientSecret;
+      _log('🔐 [AUTH] Using client secret (native platform)');
+    } else {
+      _log('🔐 [AUTH] Using PKCE only (web platform)');
+    }
+    
     final response = await http.post(
       Uri.parse('https://accounts.spotify.com/api/token'),
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: {
-        'grant_type': 'authorization_code',
-        'code': code,
-        'redirect_uri': redirectUri,
-        'client_id': clientId,
-        'client_secret': clientSecret,
-        'code_verifier': codeVerifier,
-      },
+      body: requestBody,
     );
     
     if (response.statusCode == 200) {
@@ -398,15 +409,22 @@ class SpotifyAuthService extends ChangeNotifier {
       final clientId = ApiConfig.spotifyClientId;
       final clientSecret = ApiConfig.spotifyClientSecret;
       
+      // Build request body
+      final Map<String, String> requestBody = {
+        'grant_type': 'refresh_token',
+        'refresh_token': _refreshToken!,
+        'client_id': clientId,
+      };
+      
+      // Only add client_secret if available (native platforms)
+      if (clientSecret.isNotEmpty && !kIsWeb) {
+        requestBody['client_secret'] = clientSecret;
+      }
+      
       final response = await http.post(
         Uri.parse('https://accounts.spotify.com/api/token'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {
-          'grant_type': 'refresh_token',
-          'refresh_token': _refreshToken!,
-          'client_id': clientId,
-          'client_secret': clientSecret,
-        },
+        body: requestBody,
       );
       
       if (response.statusCode == 200) {

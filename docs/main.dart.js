@@ -97909,32 +97909,35 @@ case 6:case 1:return A.x(q,r)
 case 2:return A.w(o.at(-1),r)}})
 return A.y($async$xl,r)},
 oq(a,b){return this.abU(a,b)},
-abU(a,b){var s=0,r=A.z(t.H),q=this,p,o,n,m,l,k,j
+abU(a,b){var s=0,r=A.z(t.H),q=this,p,o,n,m,l,k
 var $async$oq=A.A(function(c,d){if(c===1)return A.w(d,r)
 while(true)switch(s){case 0:window.toString
 p=typeof console!="undefined"
 p.toString
 if(p)window.console.log("\ud83d\udd10 [AUTH] Exchanging authorization code for tokens...")
 o=A.zC("SPOTIFY_CLIENT_ID","ce1797970d2d4ec8852fa68a54fe8a8f")
-n=A.zC("SPOTIFY_CLIENT_SECRET","")
-p=A.dw("https://accounts.spotify.com/api/token",0,null)
-m=t.N
-l=A.a9(["Content-Type","application/x-www-form-urlencoded"],m,m)
+A.zC("SPOTIFY_CLIENT_SECRET","")
+p=t.N
+n=A.a9(["grant_type","authorization_code","code",a,"redirect_uri",u.d,"client_id",o,"code_verifier",b],p,p)
+window.toString
+m=typeof console!="undefined"
+m.toString
+if(m)window.console.log("\ud83d\udd10 [AUTH] Using PKCE only (web platform)")
 s=2
-return A.p(A.z4(p,A.a9(["grant_type","authorization_code","code",a,"redirect_uri",u.d,"client_id",o,"client_secret",n,"code_verifier",b],m,m),null,l),$async$oq)
-case 2:k=d
-p=k.b
+return A.p(A.z4(A.dw("https://accounts.spotify.com/api/token",0,null),n,null,A.a9(["Content-Type","application/x-www-form-urlencoded"],p,p)),$async$oq)
+case 2:l=d
+p=l.b
 s=p===200?3:5
 break
 case 3:window.toString
 p=typeof console!="undefined"
 p.toString
 if(p)window.console.log("\u2705 [AUTH] Token exchange successful")
-j=B.ac.fD(0,A.iL(J.a8(A.iH(k.e).c.a,"charset")).d_(0,k.w),null)
-p=J.aj(j)
-q.b=p.h(j,"access_token")
-q.c=p.h(j,"refresh_token")
-q.d=new A.eQ(Date.now(),0,!1).OQ(A.d7(0,0,p.h(j,"expires_in")).a)
+k=B.ac.fD(0,A.iL(J.a8(A.iH(l.e).c.a,"charset")).d_(0,l.w),null)
+p=J.aj(k)
+q.b=p.h(k,"access_token")
+q.c=p.h(k,"refresh_token")
+q.d=new A.eQ(Date.now(),0,!1).OQ(A.d7(0,0,p.h(k,"expires_in")).a)
 window.toString
 p=typeof console!="undefined"
 p.toString
@@ -97955,12 +97958,12 @@ case 5:window.toString
 m=typeof console!="undefined"
 m.toString
 if(m)window.console.error("\u274c [AUTH] Token exchange failed: "+p)
-p=A.iL(J.a8(A.iH(k.e).c.a,"charset")).d_(0,k.w)
+p=A.iL(J.a8(A.iH(l.e).c.a,"charset")).d_(0,l.w)
 window.toString
 m=typeof console!="undefined"
 m.toString
 if(m)window.console.error("\u274c [AUTH] Response: "+p)
-throw A.e(A.cF("Token exchange failed: "+k.gBj(0)))
+throw A.e(A.cF("Token exchange failed: "+l.gBj(0)))
 case 4:return A.x(null,r)}})
 return A.y($async$oq,r)},
 qH(){var s=0,r=A.z(t.H),q=this,p,o,n,m
