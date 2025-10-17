@@ -1,253 +1,503 @@
-# Spotify AI Music App 🎵# Spotify AI Music App 🎵# Spotify Artist Search App 🎵
+# Spotify AI Music App 🎵# Spotify AI Music App 🎵# Spotify AI Music App 🎵# Spotify Artist Search App 🎵
 
 
 
-Flutter app with Spotify API integration and AI-powered playlist generation.
+A beautiful, modern Flutter application that combines Spotify's music database with AI-powered playlist generation using Google Gemini. Built with Material Design 3 for an expressive and delightful user experience.
 
 
 
-## Features ✨Flutter app with Spotify API integration and AI-powered playlist generation.A beautiful, modern Flutter application that lets you search for artists and discover their top tracks using the Spotify API. Built with Material Design 3 (Material You) for an expressive and delightful user experience.
+## Features ✨Flutter app with Spotify API integration and AI-powered playlist generation.
 
 
 
-✅ **Search** - Find artists & songs  
+✅ **Spotify Authentication** - Secure OAuth login  
 
-✅ **Track Details** - View songs with QR codes  
+✅ **Artist Search** - Find artists with real-time suggestions  
+
+✅ **Track Details** - View songs with previews and QR codes  ## Features ✨Flutter app with Spotify API integration and AI-powered playlist generation.A beautiful, modern Flutter application that lets you search for artists and discover their top tracks using the Spotify API. Built with Material Design 3 (Material You) for an expressive and delightful user experience.
+
+✅ **Audio Preview** - Listen to 30-second track previews  
+
+✅ **Custom Playlists** - Create and manage your own playlists  
+
+✅ **AI Playlists** - Generate intelligent playlists with Gemini AI  
+
+✅ **Audio Recognition** - Identify songs using audio (Shazam-like feature)  ✅ **Search** - Find artists & songs  
+
+✅ **Material 3 Design** - Beautiful, modern UI with smooth animations  
+
+✅ **Offline Support** - Playlists persist locally with SharedPreferences  ✅ **Track Details** - View songs with QR codes  
+
+✅ **Web & Mobile** - Cross-platform Flutter support  
 
 ✅ **Audio Preview** - Listen to 30-second previews  ## Quick Setup## Features ✨
 
+## 🚀 Quick Start
+
 ✅ **Playlists** - Create & manage custom playlists  
+
+### Prerequisites
 
 ✅ **Spotify Login** - OAuth authentication  
 
-✅ **AI Playlists** - Generate playlists with Gemini AI  
+- Flutter SDK (3.0.0 or higher)
 
-### 1. Add API Keys- **Welcoming Home Page**: A friendly introduction explaining how the app works
+- Dart SDK✅ **AI Playlists** - Generate playlists with Gemini AI  
 
-## Quick Setup 🚀
+- A Spotify Developer Account
 
-- **Intelligent Search**: Real-time artist search with smart suggestions
+- Google AI Studio account (free tier available)### 1. Add API Keys- **Welcoming Home Page**: A friendly introduction explaining how the app works
 
-### 1. Add Your API Keys
 
-**Spotify Credentials** (`lib/services/spotify_service.dart`):- **Beautiful UI**: Modern Material 3 design with smooth animations
 
-You'll need to add your own API keys to these files:
+### 1. Clone & Setup## Quick Setup 🚀
 
-```dart- **Artist Details**: View comprehensive artist information including:
 
-- **Spotify API** → `lib/services/spotify_service.dart` (lines 8-9)
+
+```bash- **Intelligent Search**: Real-time artist search with smart suggestions
+
+git clone https://github.com/ByFlowt/spotify-ai-music-app.git
+
+cd spotify-ai-music-app### 1. Add Your API Keys
+
+flutter pub get
+
+```**Spotify Credentials** (`lib/services/spotify_service.dart`):- **Beautiful UI**: Modern Material 3 design with smooth animations
+
+
+
+### 2. Configure API KeysYou'll need to add your own API keys to these files:
+
+
+
+**Copy the example environment file:**```dart- **Artist Details**: View comprehensive artist information including:
+
+```bash
+
+cp .env.example .env- **Spotify API** → `lib/services/spotify_service.dart` (lines 8-9)
+
+```
 
   - Get from: https://developer.spotify.com/dashboardstatic const String clientId = 'YOUR_CLIENT_ID';  - Follower count
 
+**Edit `.env` and add your API keys:**
 
+```
 
-- **Gemini AI** → `lib/services/gemini_ai_service.dart` (line 9)static const String clientSecret = 'YOUR_CLIENT_SECRET';  - Popularity metrics
+SPOTIFY_CLIENT_ID=your_spotify_client_id_here
 
-  - Get from: https://makersuite.google.com/app/apikey
+SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here- **Gemini AI** → `lib/services/gemini_ai_service.dart` (line 9)static const String clientSecret = 'YOUR_CLIENT_SECRET';  - Popularity metrics
+
+GEMINI_API_KEY=your_gemini_api_key_here
+
+AUDD_API_KEY=your_audd_api_key_here  # Optional, for audio recognition  - Get from: https://makersuite.google.com/app/apikey
+
+```
 
 ```  - Music genres
 
+**Get your API keys:**
+
 ### 2. Deploy (Required for Login)
 
-Get from: https://developer.spotify.com/dashboard  - Artist images
+- **Spotify**: https://developer.spotify.com/dashboard
+
+  - Create an app and copy Client ID & SecretGet from: https://developer.spotify.com/dashboard  - Artist images
+
+  - Add redirect URI: `com.example.spotify_search_app://callback` (mobile) or your web URL
 
 The app is configured to auto-deploy via GitHub Actions to GitHub Pages.
 
-- **Top Tracks**: Discover an artist's most popular songs with:
+- **Gemini AI**: https://aistudio.google.com/app/apikey
 
-Your live URL will be:
-
-```**Gemini AI Key** (`lib/services/gemini_ai_service.dart`):  - Album artwork
-
-https://byflowt.github.io/spotify-ai-music-app/
-
-``````dart  - Track duration
+  - Create a new API key (free tier available)- **Top Tracks**: Discover an artist's most popular songs with:
 
 
+
+- **AUDD.io** (optional): https://audd.ioYour live URL will be:
+
+  - Free tier: ~3000 requests/month
+
+  - For audio recognition feature```**Gemini AI Key** (`lib/services/gemini_ai_service.dart`):  - Album artwork
+
+
+
+### 3. Run the Apphttps://byflowt.github.io/spotify-ai-music-app/
+
+
+
+**Mobile/Desktop:**``````dart  - Track duration
+
+```bash
+
+flutter run
+
+```
 
 ### 3. Configure Spotify OAuthstatic const String apiKey = 'YOUR_GEMINI_API_KEY';  - Popularity rankings
 
+**Web:**
+
+```bash
+
+flutter run -d chrome
+
+```1. Go to [Spotify Dashboard](https://developer.spotify.com/dashboard)```- **Responsive Design**: Works seamlessly on different screen sizes
 
 
-1. Go to [Spotify Dashboard](https://developer.spotify.com/dashboard)```- **Responsive Design**: Works seamlessly on different screen sizes
 
-2. Your app → **Edit Settings**
+### 4. Build for Production2. Your app → **Edit Settings**
 
-3. **Redirect URIs** → Add:Get from: https://makersuite.google.com/app/apikey
 
-   ```
+
+**Web Release (deployed to GitHub Pages):**3. **Redirect URIs** → Add:Get from: https://makersuite.google.com/app/apikey
+
+```bash
+
+flutter build web --release   ```
+
+```
 
    https://byflowt.github.io/spotify-ai-music-app/## Screenshots
 
+This automatically copies to `docs/` folder for GitHub Pages deployment.
+
    ```
+
+## 📁 Project Structure
 
 4. Click **Save**### 2. Deploy for OAuth (Required for Login)
 
+```
 
+lib/
 
-### 4. Update Redirect URI in CodeThe app features:
+├── main.dart                 # App entry point
 
+├── config/### 4. Update Redirect URI in CodeThe app features:
 
+│   └── api_config.dart      # Centralized API key management
 
-Edit `lib/services/spotify_auth_service.dart` line 4:Spotify requires HTTPS for OAuth. Deploy your app:- A welcoming home page with Material 3 styling
+├── models/
 
-```dart
+│   ├── artist_model.dart
 
-static const String redirectUri = 'https://byflowt.github.io/spotify-ai-music-app/';- Intelligent search with artist suggestions
+│   ├── track_model.dartEdit `lib/services/spotify_auth_service.dart` line 4:Spotify requires HTTPS for OAuth. Deploy your app:- A welcoming home page with Material 3 styling
+
+│   └── playlist_model.dart
+
+├── screens/```dart
+
+│   ├── home_page.dart
+
+│   ├── login_page.dartstatic const String redirectUri = 'https://byflowt.github.io/spotify-ai-music-app/';- Intelligent search with artist suggestions
+
+│   ├── search_page.dart
+
+│   ├── track_detail_page.dart```
+
+│   ├── my_playlist_page.dart
+
+│   ├── ai_playlist_page.dart**Option A: Vercel (Recommended)**- Detailed artist pages with top tracks
+
+│   └── song_search_page.dart
+
+├── services/Then push:
+
+│   ├── spotify_auth_service.dart
+
+│   ├── spotify_service.dart```bash```bash- Smooth animations and transitions
+
+│   ├── playlist_manager.dart
+
+│   ├── ai_playlist_service.dartgit add .
+
+│   ├── gemini_ai_service.dart
+
+│   └── shazam_service.dartgit commit -m "Update redirect URI"flutter build web
+
+├── utils/
+
+│   └── [utility functions]git push origin main
+
+└── widgets/
+
+    └── [reusable components]```# Upload build/web folder to https://vercel.com## Getting Started 🚀
 
 ```
 
-**Option A: Vercel (Recommended)**- Detailed artist pages with top tracks
-
-Then push:
-
-```bash```bash- Smooth animations and transitions
-
-git add .
-
-git commit -m "Update redirect URI"flutter build web
-
-git push origin main
-
-```# Upload build/web folder to https://vercel.com## Getting Started 🚀
 
 
+## 🔧 API Configuration
 
 GitHub Actions will automatically rebuild and deploy! 🎉```
 
-
-
-## Tech Stack 💻### Prerequisites
-
-
-
-- **Flutter** - Cross-platform framework**Option B: GitHub Pages**
-
-- **Spotify Web API** - Music data & auth
-
-- **Google Gemini AI** - Intelligent playlists```bash- Flutter SDK (3.0.0 or higher)
-
-- **Material 3** - Modern design system
-
-- **GitHub Pages** - Free HTTPS hostingflutter build web- Dart SDK
+See [API_KEYS_SETUP.md](API_KEYS_SETUP.md) for detailed setup instructions including:
 
 
 
-## Developmentcd build/web- A Spotify Developer Account
+- Spotify Web API authentication
+
+- Google Gemini AI integration## Tech Stack 💻### Prerequisites
+
+- AUDD audio recognition setup
+
+- Environment variable management with `.env`
+
+- Secure API key practices
+
+- Deployment configuration- **Flutter** - Cross-platform framework**Option B: GitHub Pages**
 
 
 
-Run locally:git init && git add . && git commit -m "Deploy"
+## 🌐 Live Demo- **Spotify Web API** - Music data & auth
 
-```bash
+
+
+**Web App**: https://byflowt.github.io/spotify-ai-music-app/- **Google Gemini AI** - Intelligent playlists```bash- Flutter SDK (3.0.0 or higher)
+
+
+
+Deployed automatically to GitHub Pages on every push to main.- **Material 3** - Modern design system
+
+
+
+## 📦 Dependencies- **GitHub Pages** - Free HTTPS hostingflutter build web- Dart SDK
+
+
+
+### Core
+
+- `flutter` - UI framework
+
+- `provider` - State management## Developmentcd build/web- A Spotify Developer Account
+
+- `http` - HTTP requests
+
+- `google_generative_ai` - Gemini AI integration
+
+
+
+### AuthenticationRun locally:git init && git add . && git commit -m "Deploy"
+
+- `flutter_web_auth_2` - OAuth for web
+
+- `flutter_secure_storage` - Secure storage```bash
+
+- `shared_preferences` - Local storage
 
 flutter pub getgit push -f https://github.com/USERNAME/repo.git main:gh-pages### Installation
 
-flutter run -d chrome
+### Audio & Media
+
+- `audioplayers` - Audio playbackflutter run -d chrome
+
+- `url_launcher` - Open URLs
 
 ``````
 
+### UI
+
+- `google_fonts` - Custom fonts
+
+- `qr_flutter` - QR code generation
+
+- `shimmer` - Loading animationsBuild for production:1. **Clone or navigate to the project directory**
 
 
-Build for production:1. **Clone or navigate to the project directory**
 
-```bash
+### Configuration```bash
+
+- `flutter_dotenv` - Environment variables
 
 flutter build web --release### 3. Configure OAuth Redirect
 
+## 🛠️ Development
+
 ```
 
-2. **Get Spotify API Credentials**
+### Run Tests
 
----
+```bash2. **Get Spotify API Credentials**
 
-1. Add your HTTPS URL to `lib/services/spotify_auth_service.dart`:   - Visit [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+flutter test
 
-Made with ❤️ using Flutter & Spotify API
+```---
+
+
+
+### Format Code1. Add your HTTPS URL to `lib/services/spotify_auth_service.dart`:   - Visit [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+
+```bash
+
+dart format lib/Made with ❤️ using Flutter & Spotify API
+
+```
 
    ```dart   - Log in or create an account
 
-   static const String redirectUri = 'https://your-app.vercel.app/';   - Click "Create an App"
+### Analyze
 
-   ```   - Fill in the app name and description
+```bash   static const String redirectUri = 'https://your-app.vercel.app/';   - Click "Create an App"
 
-   - Copy your `Client ID` and `Client Secret`
+flutter analyze
 
-2. Add same URL to Spotify Dashboard:
+```   ```   - Fill in the app name and description
+
+
+
+### Build APK (Android)   - Copy your `Client ID` and `Client Secret`
+
+```bash
+
+flutter build apk --release2. Add same URL to Spotify Dashboard:
+
+```
 
    - Go to https://developer.spotify.com/dashboard3. **Configure API Credentials**
 
-   - Your app → Edit Settings → Redirect URIs   
+### Build iOS
 
-   - Add: `https://your-app.vercel.app/`   Open `lib/services/spotify_service.dart` and replace the placeholders:
+```bash   - Your app → Edit Settings → Redirect URIs   
 
-   - Save   
+flutter build ios --release
 
-   ```dart
+```   - Add: `https://your-app.vercel.app/`   Open `lib/services/spotify_service.dart` and replace the placeholders:
 
-### 4. Run   static const String clientId = 'YOUR_CLIENT_ID_HERE';
 
-   static const String clientSecret = 'YOUR_CLIENT_SECRET_HERE';
 
-```bash   ```
+## 🚢 Deployment   - Save   
 
-flutter run -d chrome
 
-```4. **Install Dependencies**
 
-   
+### Web (GitHub Pages)   ```dart
 
-## Features   ```bash
 
-   flutter pub get
 
-✅ Search artists & songs     ```
+1. **Build release:**### 4. Run   static const String clientId = 'YOUR_CLIENT_ID_HERE';
 
-✅ View track details with QR codes  
+   ```bash
 
-✅ Audio preview player  5. **Run the App**
-
-✅ Create & manage playlists     
-
-✅ Spotify OAuth login     ```bash
-
-✅ AI-powered playlist generation using Gemini     flutter run
+   flutter build web --release   static const String clientSecret = 'YOUR_CLIENT_SECRET_HERE';
 
    ```
 
+```bash   ```
+
+2. **Deploy (automatic via GitHub Actions or manual):**
+
+   ```bashflutter run -d chrome
+
+   git add .
+
+   git commit -m "Deploy: [version]"```4. **Install Dependencies**
+
+   git push
+
+   ```   
+
+
+
+3. **Access your app:**## Features   ```bash
+
+   ```
+
+   https://byflowt.github.io/spotify-ai-music-app/   flutter pub get
+
+   ```
+
+✅ Search artists & songs     ```
+
+### Web (Alternative: Vercel)
+
+✅ View track details with QR codes  
+
+1. **Build web:**
+
+   ```bash✅ Audio preview player  5. **Run the App**
+
+   flutter build web
+
+   ```✅ Create & manage playlists     
+
+
+
+2. **Deploy to Vercel:**✅ Spotify OAuth login     ```bash
+
+   ```bash
+
+   vercel deploy build/web✅ AI-powered playlist generation using Gemini     flutter run
+
+   ```
+
+   ```
+
+### Android (Google Play)
+
 ## Tech Stack
 
-## Project Structure 📁
+1. **Create signed APK:**
 
-- **Flutter** - Cross-platform UI framework
+   ```bash## Project Structure 📁
 
-- **Spotify Web API** - Music data & authentication```
+   flutter build apk --release
 
-- **Google Gemini AI** - Playlist intelligencelib/
+   ```- **Flutter** - Cross-platform UI framework
 
-- **Material 3** - Modern design system├── main.dart                 # App entry point with Material 3 theme
 
-├── models/
-│   ├── artist_model.dart    # Artist data model
-│   └── track_model.dart     # Track data model
-├── screens/
+
+2. **Upload to Google Play Console**- **Spotify Web API** - Music data & authentication```
+
+
+
+## 🔐 Security Notes- **Google Gemini AI** - Playlist intelligencelib/
+
+
+
+- **Never commit `.env` file** - It contains your API keys- **Material 3** - Modern design system├── main.dart                 # App entry point with Material 3 theme
+
+- Use environment variables for all sensitive data
+
+- Spotify Client Secret should never be exposed in client code├── models/
+
+- For production web, use a backend proxy for API calls│   ├── artist_model.dart    # Artist data model
+
+- Rotate API keys regularly│   └── track_model.dart     # Track data model
+
+- Use different keys for development and production├── screens/
+
 │   ├── home_page.dart       # Welcome page with app introduction
-│   ├── search_page.dart     # Artist search interface
+
+## 📝 License│   ├── search_page.dart     # Artist search interface
+
 │   └── artist_detail_page.dart  # Artist details and top tracks
-└── services/
+
+[Add your license here]└── services/
+
     └── spotify_service.dart # Spotify API integration
-```
 
-## Dependencies 📦
+## 🤝 Contributing```
 
-- **flutter**: Core framework
+
+
+Contributions are welcome! Please feel free to submit a Pull Request.## Dependencies 📦
+
+
+
+## 📧 Contact- **flutter**: Core framework
+
 - **google_fonts**: Beautiful typography (Inter font)
-- **provider**: State management
+
+For questions or feedback, please open an issue on GitHub.- **provider**: State management
+
 - **http**: API requests
-- **cached_network_image**: Efficient image loading and caching
+
+---- **cached_network_image**: Efficient image loading and caching
+
 - **shimmer**: Loading animations
-- **intl**: Internationalization
+
+**Built with ❤️ using Flutter**- **intl**: Internationalization
+
 
 ## Features Explained 🎯
 
