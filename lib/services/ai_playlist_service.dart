@@ -18,13 +18,13 @@ class AIPlaylistService extends ChangeNotifier {
   final PlaylistManager _playlistManager;
   final SpotifyAuthService _authService;
   final GeminiAIService _geminiService;
-  
+
   bool _isGenerating = false;
   double _progress = 0.0;
   String _currentStep = '';
   List<Track> _generatedTracks = [];
   Map<String, double> _genrePreferences = {};
-  
+
   bool get isGenerating => _isGenerating;
   double get progress => _progress;
   String get currentStep => _currentStep;
@@ -43,12 +43,12 @@ class AIPlaylistService extends ChangeNotifier {
     _currentStep = 'Analyzing your listening history...';
     _progress = 0.1;
     notifyListeners();
-    
+
     await Future.delayed(const Duration(milliseconds: 800));
-    
+
     // Simulate user's listening patterns
     final listeningHistory = _playlistManager.playlist;
-    
+
     // Extract genres from playlist
     final Map<String, int> genreCounts = {};
     for (var _ in listeningHistory) {
@@ -57,7 +57,7 @@ class AIPlaylistService extends ChangeNotifier {
       final genre = simulatedGenres[Random().nextInt(simulatedGenres.length)];
       genreCounts[genre] = (genreCounts[genre] ?? 0) + 1;
     }
-    
+
     // Calculate preferences (normalize to 0-1)
     final total = genreCounts.values.fold(0, (sum, count) => sum + count);
     if (total > 0) {
@@ -74,12 +74,11 @@ class AIPlaylistService extends ChangeNotifier {
         'indie': 0.15,
       };
     }
-    
+
     return {
       'totalTracks': listeningHistory.length,
-      'topGenres': _genrePreferences.entries
-          .toList()
-          ..sort((a, b) => b.value.compareTo(a.value)),
+      'topGenres': _genrePreferences.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value)),
       'diversity': _genrePreferences.length,
     };
   }
@@ -105,122 +104,135 @@ class AIPlaylistService extends ChangeNotifier {
       _currentStep = 'Loading your listening history...';
       _progress = 0.1;
       notifyListeners();
-      
+
       _log('📥 Step 1: Fetching user listening data from Spotify...');
-      
+
       final userData = await _getUserListeningData();
-      
+
       if (userData == null) {
         _log('❌ Failed to load user data - user not authenticated');
-        throw Exception('Unable to load your listening history. Please log in.');
+        throw Exception(
+            'Unable to load your listening history. Please log in.');
       }
-      
+
       _log('✅ User data loaded successfully');
       _log('   - Top tracks: ${(userData['topTracks'] as List?)?.length ?? 0}');
-      _log('   - Top artists: ${(userData['topArtists'] as List?)?.length ?? 0}');
-      _log('   - Recent tracks: ${(userData['recentTracks'] as List?)?.length ?? 0}');
-      
+      _log(
+          '   - Top artists: ${(userData['topArtists'] as List?)?.length ?? 0}');
+      _log(
+          '   - Recent tracks: ${(userData['recentTracks'] as List?)?.length ?? 0}');
+
       // Step 2: Ask Gemini AI for song recommendations
       _currentStep = 'Asking Gemini AI for recommendations...';
       _progress = 0.3;
       notifyListeners();
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       _log('🤖 Step 2: Requesting recommendations from Gemini AI...');
-      
-      final geminiRecommendations = await _geminiService.generateSongRecommendations(
+
+      final geminiRecommendations =
+          await _geminiService.generateSongRecommendations(
         topTracks: userData['topTracks'] as List<Map<String, dynamic>>,
         topArtists: userData['topArtists'] as List<Map<String, dynamic>>,
         recentTracks: userData['recentTracks'] as List<Map<String, dynamic>>,
         mood: mood,
         targetCount: targetSize,
       );
-      
+
       _log('✅ Received ${geminiRecommendations.length} recommendations');
-      
+
       // If Gemini hit rate limits, we'll get fallback recommendations
       if (geminiRecommendations.isEmpty) {
-        throw Exception('Unable to generate recommendations at this time. Please try again in a moment.');
+        throw Exception(
+            'Unable to generate recommendations at this time. Please try again in a moment.');
       }
-      
+
       // Step 3: Search Spotify for each recommendation
-      _currentStep = 'Finding songs on Spotify... (0/${geminiRecommendations.length})';
+      _currentStep =
+          'Finding songs on Spotify... (0/${geminiRecommendations.length})';
       _progress = 0.5;
       notifyListeners();
-      
-      _log('🔍 Searching Spotify for ${geminiRecommendations.length} recommendations...');
-      
+
+      _log(
+          '🔍 Searching Spotify for ${geminiRecommendations.length} recommendations...');
+
       final foundTracks = <Track>[];
       int searchedCount = 0;
-      
+
       for (final recommendation in geminiRecommendations) {
         try {
           // Update progress with count
           searchedCount++;
-          _currentStep = 'Finding songs on Spotify... ($searchedCount/${geminiRecommendations.length})';
-          _progress = 0.5 + (searchedCount / geminiRecommendations.length * 0.4);
+          _currentStep =
+              'Finding songs on Spotify... ($searchedCount/${geminiRecommendations.length})';
+          _progress =
+              0.5 + (searchedCount / geminiRecommendations.length * 0.4);
           notifyListeners();
-          
+
           // Search Spotify for this song
-          final query = '${recommendation['title']} ${recommendation['artist']}';
-          
-          _log('🔍 [$searchedCount/${geminiRecommendations.length}] Searching: $query');
-          
-          final searchResults = await _spotifyService.searchTracks(query, market: 'NL');
-          
+          final query =
+              '${recommendation['title']} ${recommendation['artist']}';
+
+          _log(
+              '🔍 [$searchedCount/${geminiRecommendations.length}] Searching: $query');
+
+          final searchResults =
+              await _spotifyService.searchTracks(query, market: 'NL');
+
           if (searchResults.isNotEmpty) {
             // Take the first (best) match
             foundTracks.add(searchResults.first);
-            
-            _log('✅ Found: ${searchResults.first.name} by ${searchResults.first.artistName}');
+
+            _log(
+                '✅ Found: ${searchResults.first.name} by ${searchResults.first.artistName}');
           } else {
-            _log('❌ Not found: ${recommendation['title']} by ${recommendation['artist']}');
+            _log(
+                '❌ Not found: ${recommendation['title']} by ${recommendation['artist']}');
           }
-          
+
           // Don't spam Spotify API
           await Future.delayed(const Duration(milliseconds: 100));
-          
         } catch (e) {
           _log('⚠️  Error searching for ${recommendation['title']}: $e');
         }
       }
-      
-      _log('📊 Step 3 Complete: Found ${foundTracks.length}/${geminiRecommendations.length} tracks on Spotify');
-      
+
+      _log(
+          '📊 Step 3 Complete: Found ${foundTracks.length}/${geminiRecommendations.length} tracks on Spotify');
+
       // Step 4: Remove duplicates and filter
       _currentStep = 'Removing duplicates...';
       _progress = 0.92;
       notifyListeners();
       await Future.delayed(const Duration(milliseconds: 300));
-      
+
       _log('🔄 Step 4: Removing duplicates and filtering...');
-      
+
       _generatedTracks = _removeDuplicates(foundTracks);
-      
+
       _log('   After deduplication: ${_generatedTracks.length} unique tracks');
-      
+
       // Step 5: Optimize track order
       _currentStep = 'Optimizing playlist flow...';
       _progress = 0.96;
       notifyListeners();
       await Future.delayed(const Duration(milliseconds: 300));
-      
+
       _log('🎼 Step 5: Optimizing track order...');
-      
+
       _generatedTracks = _optimizeTrackOrder(_generatedTracks);
-      
+
       _currentStep = 'Playlist ready! 🎉';
       _progress = 1.0;
       _isGenerating = false;
       notifyListeners();
-      
+
       _log('═══════════════════════════════════════════════');
       _log('✅ AI Playlist Generation Complete!');
       _log('🎵 Final playlist: ${_generatedTracks.length} tracks');
       _log('═══════════════════════════════════════════════');
-      
+
       return _generatedTracks;
-      
     } catch (e) {
       _log('═══════════════════════════════════════════════');
       _log('❌ ERROR: AI Playlist Generation Failed');
@@ -235,14 +247,15 @@ class AIPlaylistService extends ChangeNotifier {
   }
 
   // Get user's listening data from Spotify
-  Future<Map<String, List<Map<String, dynamic>>>?> _getUserListeningData() async {
+  Future<Map<String, List<Map<String, dynamic>>>?>
+      _getUserListeningData() async {
     try {
       final userToken = _authService.accessToken;
       if (userToken == null || !_authService.isAuthenticated) {
         _log('⚠️  User not authenticated');
         return null;
       }
-      
+
       // Fetch user's data in parallel
       final results = await Future.wait([
         _spotifyService.getUserTopTracks(
@@ -260,48 +273,53 @@ class AIPlaylistService extends ChangeNotifier {
           limit: 20,
         ),
       ]);
-      
+
       final topTracks = results[0] as List<Track>;
       final topArtists = results[1] as List<Artist>;
       final recentTracks = results[2] as List<Track>;
-      
+
       // Convert to format Gemini expects
       return {
-        'topTracks': topTracks.map((t) => {
-          'name': t.name,
-          'artist': t.artistName,
-          'id': t.id,
-        }).toList(),
-        'topArtists': topArtists.map((a) => {
-          'name': a.name,
-          'id': a.id,
-          'genres': a.genres,
-        }).toList(),
-        'recentTracks': recentTracks.map((t) => {
-          'name': t.name,
-          'artist': t.artistName,
-          'id': t.id,
-        }).toList(),
+        'topTracks': topTracks
+            .map((t) => {
+                  'name': t.name,
+                  'artist': t.artistName,
+                  'id': t.id,
+                })
+            .toList(),
+        'topArtists': topArtists
+            .map((a) => {
+                  'name': a.name,
+                  'id': a.id,
+                  'genres': a.genres,
+                })
+            .toList(),
+        'recentTracks': recentTracks
+            .map((t) => {
+                  'name': t.name,
+                  'artist': t.artistName,
+                  'id': t.id,
+                })
+            .toList(),
       };
-      
     } catch (e) {
       _log('❌ Error fetching user listening data: $e');
       return null;
     }
   }
-  
+
   // Remove duplicate tracks
   List<Track> _removeDuplicates(List<Track> tracks) {
     final seen = <String>{};
     final unique = <Track>[];
-    
+
     for (final track in tracks) {
       if (!seen.contains(track.id)) {
         seen.add(track.id);
         unique.add(track);
       }
     }
-    
+
     // Also remove tracks already in user's playlist
     final userTrackIds = _playlistManager.playlist.map((t) => t.id).toSet();
     return unique.where((t) => !userTrackIds.contains(t.id)).toList();
@@ -346,7 +364,8 @@ class AIPlaylistService extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, List<String>>> _getSeedData(Map<String, dynamic> analysis) async {
+  Future<Map<String, List<String>>> _getSeedData(
+      Map<String, dynamic> analysis) async {
     // Try to get real user data first
     try {
       final userToken = _authService.accessToken;
@@ -359,25 +378,22 @@ class AIPlaylistService extends ChangeNotifier {
           userAccessToken: userToken,
           limit: 2,
         );
-        
+
         if (userTopTracks.isNotEmpty || userTopArtists.isNotEmpty) {
           // Use real user data
           final seedTracks = userTopTracks.take(2).map((t) => t.id).toList();
           final seedArtists = userTopArtists.take(2).map((a) => a.id).toList();
-          
+
           // Get genres from top artists and map to valid Spotify genres
-          final artistGenres = userTopArtists
-              .expand((artist) => artist.genres)
-              .toSet()
-              .toList();
-          
-          final topGenres = _mapToValidSpotifyGenres(artistGenres)
-              .take(2)
-              .toList();
-          
+          final artistGenres =
+              userTopArtists.expand((artist) => artist.genres).toSet().toList();
+
+          final topGenres =
+              _mapToValidSpotifyGenres(artistGenres).take(2).toList();
+
           _log('Artist genres: $artistGenres');
-            print('Mapped to valid genres: $topGenres');
-          
+          print('Mapped to valid genres: $topGenres');
+
           return {
             'genres': topGenres.isNotEmpty ? topGenres : _getDefaultGenres(),
             'tracks': seedTracks,
@@ -388,13 +404,13 @@ class AIPlaylistService extends ChangeNotifier {
     } catch (e) {
       _log('Could not fetch user data, using fallback: $e');
     }
-    
+
     // Fallback to simulated data
     final topGenres = (analysis['topGenres'] as List)
         .take(2)
         .map((e) => e.key as String)
         .toList();
-    
+
     // Add discovery genres if needed
     final allGenres = _spotifyService.getSimulatedTopGenres();
     if (topGenres.length < 2) {
@@ -406,20 +422,20 @@ class AIPlaylistService extends ChangeNotifier {
         }
       }
     }
-    
+
     // Get seed tracks from user's playlist
     final userTracks = _playlistManager.playlist;
     final seedTracks = userTracks.isNotEmpty
         ? userTracks.take(2).map((t) => t.id).toList()
         : <String>[];
-    
+
     return {
       'genres': topGenres,
       'tracks': seedTracks,
       'artists': <String>[], // Could extract from user tracks
     };
   }
-  
+
   List<String> _getDefaultGenres() {
     return ['pop', 'rock'];
   }
@@ -435,22 +451,22 @@ class AIPlaylistService extends ChangeNotifier {
     for (var track in candidates) {
       uniqueTracks[track.id] = track;
     }
-    
+
     // Remove tracks already in user's playlist
     final userTrackIds = _playlistManager.playlist.map((t) => t.id).toSet();
     final filteredTracks = uniqueTracks.values
         .where((track) => !userTrackIds.contains(track.id))
         .toList();
-    
+
     // Score tracks based on preferences and mood
     final scoredTracks = filteredTracks.map((track) {
       double score = Random().nextDouble(); // Simplified scoring
-      
+
       // Prefer tracks with previews
       if (track.previewUrl != null) {
         score += 0.3;
       }
-      
+
       // Prefer popular tracks (but not too popular for discovery)
       final popularity = track.popularity;
       if (includeNewDiscoveries) {
@@ -458,13 +474,14 @@ class AIPlaylistService extends ChangeNotifier {
       } else {
         score += popularity / 100;
       }
-      
+
       return {'track': track, 'score': score};
     }).toList();
-    
+
     // Sort by score and take top tracks
-    scoredTracks.sort((a, b) => (b['score'] as double).compareTo(a['score'] as double));
-    
+    scoredTracks
+        .sort((a, b) => (b['score'] as double).compareTo(a['score'] as double));
+
     return scoredTracks
         .take(targetSize)
         .map((item) => item['track'] as Track)
@@ -476,22 +493,23 @@ class AIPlaylistService extends ChangeNotifier {
     // In production, use audio features for better flow
     final optimized = <Track>[];
     final remaining = List<Track>.from(tracks);
-    
+
     while (remaining.isNotEmpty) {
       // Pick a track (in real app, consider tempo, key, energy transitions)
       final index = Random().nextInt(remaining.length);
       optimized.add(remaining.removeAt(index));
     }
-    
+
     return optimized;
   }
 
   // Save generated playlist to user's library
   Future<void> saveGeneratedPlaylist() async {
-    _log('💾 Saving ${_generatedTracks.length} tracks to AI playlist folder...');
+    final playlistName = _playlistManager.aiPlaylistName;
+    _log('💾 Saving ${_generatedTracks.length} tracks to "$playlistName"...');
     await _playlistManager.addTracksToAI(_generatedTracks);
-    _log('✅ All tracks saved to AI playlist folder successfully!');
-    _log('📊 AI Playlist now has: ${_playlistManager.aiCount} tracks');
+    _log('✅ All tracks saved to "$playlistName" successfully!');
+    _log('📊 "$playlistName" now has: ${_playlistManager.aiCount} tracks');
   }
 
   // Quick actions
@@ -508,15 +526,50 @@ class AIPlaylistService extends ChangeNotifier {
     // Valid Spotify genre seeds (verified from API)
     // NOTE: 'hard-rock' and 'hardcore' are NOT valid - use 'metal', 'rock', 'punk' instead
     const validGenres = {
-      'pop', 'rock', 'hip-hop', 'edm', 'electronic', 'dance', 'house',
-      'techno', 'trance', 'dubstep', 'drum-and-bass', 'indie', 'alternative',
-      'metal', 'punk', 'jazz', 'classical', 'r-n-b', 'soul', 'funk',
-      'blues', 'country', 'folk', 'reggae', 'latin', 'world-music',
-      'ambient', 'chill', 'acoustic', 'piano', 'guitar', 'vocal',
-      'party', 'happy', 'sad', 'energetic', 'relaxed', 'sleep',
-      'hardstyle', 'industrial', 'grunge', 'disco'
+      'pop',
+      'rock',
+      'hip-hop',
+      'edm',
+      'electronic',
+      'dance',
+      'house',
+      'techno',
+      'trance',
+      'dubstep',
+      'drum-and-bass',
+      'indie',
+      'alternative',
+      'metal',
+      'punk',
+      'jazz',
+      'classical',
+      'r-n-b',
+      'soul',
+      'funk',
+      'blues',
+      'country',
+      'folk',
+      'reggae',
+      'latin',
+      'world-music',
+      'ambient',
+      'chill',
+      'acoustic',
+      'piano',
+      'guitar',
+      'vocal',
+      'party',
+      'happy',
+      'sad',
+      'energetic',
+      'relaxed',
+      'sleep',
+      'hardstyle',
+      'industrial',
+      'grunge',
+      'disco'
     };
-    
+
     // Genre mapping for common mismatches
     // Map hardcore genres to valid alternatives
     const genreMapping = {
@@ -535,18 +588,18 @@ class AIPlaylistService extends ChangeNotifier {
       'hard dance': 'dance',
       'happy hardcore': 'dance',
     };
-    
+
     final mapped = <String>[];
-    
+
     for (final genre in artistGenres) {
       final lowerGenre = genre.toLowerCase();
-      
+
       // Check if it's already a valid genre
       if (validGenres.contains(lowerGenre)) {
         mapped.add(lowerGenre);
         continue;
       }
-      
+
       // Check if we have a mapping
       if (genreMapping.containsKey(lowerGenre)) {
         final mappedGenre = genreMapping[lowerGenre]!;
@@ -555,10 +608,11 @@ class AIPlaylistService extends ChangeNotifier {
         }
         continue;
       }
-      
+
       // Try to find partial matches
       for (final validGenre in validGenres) {
-        if (lowerGenre.contains(validGenre) || validGenre.contains(lowerGenre)) {
+        if (lowerGenre.contains(validGenre) ||
+            validGenre.contains(lowerGenre)) {
           if (!mapped.contains(validGenre)) {
             mapped.add(validGenre);
             break;
@@ -566,23 +620,23 @@ class AIPlaylistService extends ChangeNotifier {
         }
       }
     }
-    
+
     // If no matches found, return some safe defaults based on energy
     if (mapped.isEmpty) {
-      if (artistGenres.any((g) => 
-          g.toLowerCase().contains('hard') || 
+      if (artistGenres.any((g) =>
+          g.toLowerCase().contains('hard') ||
           g.toLowerCase().contains('core') ||
           g.toLowerCase().contains('metal'))) {
         mapped.addAll(['hardstyle', 'metal']);
-      } else if (artistGenres.any((g) => 
-          g.toLowerCase().contains('electronic') || 
+      } else if (artistGenres.any((g) =>
+          g.toLowerCase().contains('electronic') ||
           g.toLowerCase().contains('edm'))) {
         mapped.addAll(['edm', 'electronic']);
       } else {
         mapped.addAll(['pop', 'rock']);
       }
     }
-    
+
     return mapped;
   }
 

@@ -17,6 +17,7 @@ class SongSearchPage extends StatefulWidget {
 
 class _SongSearchPageState extends State<SongSearchPage> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   List<Track> _searchResults = [];
   List<Track> _trendingTracks = [];
   bool _hasSearched = false;
@@ -33,6 +34,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -43,7 +45,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
       // Load trending tracks (high popularity)
       final trendingResults = await spotifyService.searchTracks('trending');
       trendingResults.sort((a, b) => (b.popularity).compareTo(a.popularity));
-      
+
       if (mounted) {
         setState(() {
           _trendingTracks = trendingResults.take(5).toList();
@@ -69,7 +71,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
     final spotifyService = context.read<SpotifyService>();
     final results = await spotifyService.searchTracks(query);
     _applySorting(results);
-    
+
     setState(() {
       _searchResults = results;
       _hasSearched = true;
@@ -89,6 +91,12 @@ class _SongSearchPageState extends State<SongSearchPage> {
     }
   }
 
+  void _runExampleSearch(String query) {
+    _searchController.text = query;
+    FocusScope.of(context).unfocus();
+    _performSearch(query);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -104,7 +112,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
             Expanded(
               child: Consumer<SpotifyService>(
                 builder: (context, service, child) {
-                  return _buildResultsView(context, service, playlistManager, colorScheme, textTheme);
+                  return _buildResultsView(context, service, playlistManager,
+                      colorScheme, textTheme);
                 },
               ),
             ),
@@ -116,7 +125,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildHeader(
+      BuildContext context, ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       decoration: BoxDecoration(
@@ -184,6 +194,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
                   ),
                   child: TextField(
                     controller: _searchController,
+                    focusNode: _searchFocusNode,
                     onChanged: (value) => setState(() {}),
                     onSubmitted: _performSearch,
                     decoration: InputDecoration(
@@ -233,7 +244,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
                     'Sort: $_sortBy',
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
-                  backgroundColor: colorScheme.primaryContainer.withOpacity(0.3),
+                  backgroundColor:
+                      colorScheme.primaryContainer.withOpacity(0.3),
                   side: BorderSide(
                     color: colorScheme.primary.withOpacity(0.5),
                   ),
@@ -251,7 +263,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
                     'Genre: $_filterGenre',
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
-                  backgroundColor: colorScheme.secondaryContainer.withOpacity(0.3),
+                  backgroundColor:
+                      colorScheme.secondaryContainer.withOpacity(0.3),
                   side: BorderSide(
                     color: colorScheme.secondary.withOpacity(0.5),
                   ),
@@ -296,7 +309,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline_rounded, size: 64, color: colorScheme.error),
+              Icon(Icons.error_outline_rounded,
+                  size: 64, color: colorScheme.error),
               const SizedBox(height: 16),
               Text(
                 'Oops! Something went wrong',
@@ -325,7 +339,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off_rounded, size: 64, color: colorScheme.onSurfaceVariant),
+            Icon(Icons.search_off_rounded,
+                size: 64, color: colorScheme.onSurfaceVariant),
             const SizedBox(height: 16),
             Text('No songs found', style: textTheme.titleLarge),
             const SizedBox(height: 8),
@@ -373,7 +388,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(
-                      track.imageUrl ?? 'https://via.placeholder.com/60?text=No+Image',
+                      track.imageUrl ??
+                          'https://via.placeholder.com/60?text=No+Image',
                       width: 60,
                       height: 60,
                       fit: BoxFit.cover,
@@ -402,17 +418,19 @@ class _SongSearchPageState extends State<SongSearchPage> {
                           track.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                         ),
                         Text(
                           track.artistName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
                         ),
                       ],
                     ),
@@ -428,8 +446,11 @@ class _SongSearchPageState extends State<SongSearchPage> {
                       setState(() {});
                     },
                     icon: Icon(
-                      isAdded ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: isAdded ? Colors.red : colorScheme.onSurfaceVariant,
+                      isAdded
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      color:
+                          isAdded ? Colors.red : colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -441,9 +462,10 @@ class _SongSearchPageState extends State<SongSearchPage> {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildEmptyState(
+      BuildContext context, ColorScheme colorScheme, TextTheme textTheme) {
     final playlistManager = context.watch<PlaylistManager>();
-    
+
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -459,7 +481,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
             const SizedBox(height: 24),
             Text(
               'Discover Songs',
-              style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Text(
@@ -470,7 +493,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
               ),
             ),
             const SizedBox(height: 40),
-            
+
             // Feature Cards
             _buildFeatureCard(
               context,
@@ -478,6 +501,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
               'Search Songs',
               'Find any song and add to your collection',
               colorScheme.primary,
+              onTap: () => _runExampleSearch('Top hits'),
             ),
             const SizedBox(height: 12),
             _buildFeatureCard(
@@ -486,6 +510,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
               'Audio Search',
               'Use your microphone to identify songs',
               colorScheme.secondary,
+              onTap: () => _showShazamDialog(context),
             ),
             const SizedBox(height: 12),
             _buildFeatureCard(
@@ -494,9 +519,18 @@ class _SongSearchPageState extends State<SongSearchPage> {
               'Save Favorites',
               'Add songs to your playlist for later',
               colorScheme.tertiary,
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'Use the heart icon on any result to save it to My Playlist.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 40),
-            
+
             // Trending Section
             if (_loadingTrending)
               Center(
@@ -509,7 +543,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
                   children: [
                     Text(
                       '🔥 Trending Now',
-                      style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      style: textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
                     ..._trendingTracks.map((track) {
@@ -529,7 +564,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(6),
                               child: Image.network(
-                                track.imageUrl ?? 'https://via.placeholder.com/40?text=No+Image',
+                                track.imageUrl ??
+                                    'https://via.placeholder.com/40?text=No+Image',
                                 width: 40,
                                 height: 40,
                                 fit: BoxFit.cover,
@@ -552,7 +588,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
                                     track.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                                    style: textTheme.labelMedium
+                                        ?.copyWith(fontWeight: FontWeight.bold),
                                   ),
                                   Text(
                                     track.artistName,
@@ -575,8 +612,12 @@ class _SongSearchPageState extends State<SongSearchPage> {
                                 setState(() {});
                               },
                               icon: Icon(
-                                isAdded ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                color: isAdded ? Colors.red : colorScheme.onSurfaceVariant,
+                                isAdded
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                color: isAdded
+                                    ? Colors.red
+                                    : colorScheme.onSurfaceVariant,
                                 size: 20,
                               ),
                             ),
@@ -599,12 +640,14 @@ class _SongSearchPageState extends State<SongSearchPage> {
     IconData icon,
     String title,
     String description,
-    Color accentColor,
-  ) {
+    Color accentColor, {
+    VoidCallback? onTap,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final borderRadius = BorderRadius.circular(16);
 
-    return Container(
+    final content = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -615,7 +658,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
             accentColor.withOpacity(0.05),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: borderRadius,
         border: Border.all(
           color: accentColor.withOpacity(0.2),
           width: 1,
@@ -638,7 +681,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
               children: [
                 Text(
                   title,
-                  style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                  style: textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -651,6 +695,20 @@ class _SongSearchPageState extends State<SongSearchPage> {
             ),
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return content;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: borderRadius,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius,
+        child: content,
       ),
     );
   }
@@ -782,7 +840,7 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     // Initialize audio recorder for web
     if (kIsWeb) {
       _audioRecorder = WebAudioRecorder();
@@ -804,11 +862,11 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
         _isRecording = false;
         _isProcessing = true;
       });
-      
+
       try {
         // Stop recording and get audio data
         final audioBase64 = await _audioRecorder?.stopRecording();
-        
+
         if (audioBase64 == null || audioBase64.isEmpty) {
           throw Exception('No audio data recorded');
         }
@@ -817,38 +875,40 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
         final result = await ApiProxyService.recognizeAudio(
           audioBase64: audioBase64,
         );
-        
+
         if (mounted) {
           Navigator.pop(context);
-          
+
           if (result['status'] == 'success' && result['result'] != null) {
             final songData = result['result'];
             final title = songData['title'] ?? 'Unknown';
             final artist = songData['artist'] ?? 'Unknown';
             final album = songData['album'];
-            
+
             // Create a Track object and add to identified songs
             final identifiedTrack = Track(
-              id: songData['spotify_id'] ?? '${title}_${artist}'.replaceAll(' ', '_'),
+              id: songData['spotify_id'] ??
+                  '${title}_${artist}'.replaceAll(' ', '_'),
               name: title,
               artistName: artist,
               albumName: album,
               imageUrl: songData['spotify']?['image'],
-              spotifyUrl: songData['spotify_id'] != null 
+              spotifyUrl: songData['spotify_id'] != null
                   ? 'https://open.spotify.com/track/${songData['spotify_id']}'
                   : null,
               previewUrl: songData['preview_url'],
               popularity: 75,
               durationMs: (songData['duration'] ?? 0) * 1000,
             );
-            
+
             // Add to identified songs playlist
             final playlistManager = context.read<PlaylistManager>();
             await playlistManager.addIdentifiedSong(identifiedTrack);
-            
+
             _showSongIdentified(title, artist);
           } else {
-            _showError('Could not identify the song. Please try again or search manually.');
+            _showError(
+                'Could not identify the song. Please try again or search manually.');
           }
         }
       } catch (e) {
@@ -872,7 +932,7 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
       });
 
       final initialized = await _audioRecorder!.initialize();
-      
+
       if (!initialized) {
         setState(() {
           _error = _audioRecorder!.error;
@@ -882,14 +942,14 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
       }
 
       final started = await _audioRecorder!.startRecording();
-      
+
       if (started) {
         setState(() {
           _isRecording = true;
           _statusText = 'Listening... (tap to stop)';
           _error = null;
         });
-        
+
         // Auto-stop after 10 seconds
         Future.delayed(const Duration(seconds: 10), () {
           if (_isRecording && mounted) {
@@ -951,7 +1011,7 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
 
   void _showError(String message) {
     if (!mounted) return;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -976,7 +1036,7 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Dialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(32),
@@ -991,18 +1051,18 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
             Text(
               'Song Recognition',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               _statusText,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
+                    color: colorScheme.onSurfaceVariant,
+                  ),
             ),
             const SizedBox(height: 40),
-            
+
             // Animated microphone button
             GestureDetector(
               onTap: _toggleRecording,
@@ -1069,9 +1129,9 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
                 },
               ),
             ),
-            
+
             const SizedBox(height: 40),
-            
+
             // Cancel button
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1083,4 +1143,3 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
     );
   }
 }
-

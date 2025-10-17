@@ -33,7 +33,7 @@ class _SearchPageState extends State<SearchPage> {
 
     final spotifyService = context.read<SpotifyService>();
     final results = await spotifyService.searchArtists(query);
-    
+
     setState(() {
       _searchResults = results;
       _hasSearched = true;
@@ -98,7 +98,7 @@ class _SearchPageState extends State<SearchPage> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Enhanced Search Bar with modern styling
                   Container(
                     decoration: BoxDecoration(
@@ -128,18 +128,21 @@ class _SearchPageState extends State<SearchPage> {
                           padding: const EdgeInsets.only(left: 16, right: 8),
                           child: Icon(
                             Icons.search_rounded,
-                            color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                            color:
+                                colorScheme.onSurfaceVariant.withOpacity(0.6),
                             size: 24,
                           ),
                         ),
-                        prefixIconConstraints: const BoxConstraints(minHeight: 0, minWidth: 0),
+                        prefixIconConstraints:
+                            const BoxConstraints(minHeight: 0, minWidth: 0),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? Padding(
                                 padding: const EdgeInsets.only(right: 8),
                                 child: IconButton(
                                   icon: Icon(
                                     Icons.clear_rounded,
-                                    color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                                    color: colorScheme.onSurfaceVariant
+                                        .withOpacity(0.6),
                                   ),
                                   onPressed: () {
                                     _searchController.clear();
@@ -154,7 +157,8 @@ class _SearchPageState extends State<SearchPage> {
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 14),
                       ),
                       onChanged: (value) {
                         setState(() {});
@@ -162,9 +166,9 @@ class _SearchPageState extends State<SearchPage> {
                       onSubmitted: _performSearch,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Enhanced suggestion chips with better styling
                   if (spotifyService.lastSearchedArtists.isNotEmpty || true)
                     Column(
@@ -182,16 +186,28 @@ class _SearchPageState extends State<SearchPage> {
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
-                            children: (spotifyService.lastSearchedArtists.take(3).map((artist) {
-                              return _buildModernSuggestionChip(artist.name, colorScheme);
-                            }).toList().isNotEmpty
-                                ? spotifyService.lastSearchedArtists.take(3).map((artist) {
-                                    return _buildModernSuggestionChip(artist.name, colorScheme);
+                            children: (spotifyService.lastSearchedArtists
+                                    .take(3)
+                                    .map((artist) {
+                                      return _buildModernSuggestionChip(
+                                          artist.name, colorScheme);
+                                    })
+                                    .toList()
+                                    .isNotEmpty
+                                ? spotifyService.lastSearchedArtists
+                                    .take(3)
+                                    .map((artist) {
+                                    return _buildModernSuggestionChip(
+                                        artist.name, colorScheme);
                                   }).toList()
                                 : [
-                                    _buildModernSuggestionChip('Dr. Peacock', colorScheme),
-                                    _buildModernSuggestionChip('Dr. Peacock & The Whistlers', colorScheme),
-                                    _buildModernSuggestionChip('Dr. Peacock', colorScheme),
+                                    _buildModernSuggestionChip(
+                                        'Dr. Peacock', colorScheme),
+                                    _buildModernSuggestionChip(
+                                        'Dr. Peacock & The Whistlers',
+                                        colorScheme),
+                                    _buildModernSuggestionChip(
+                                        'Dr. Peacock', colorScheme),
                                   ]),
                           ),
                         ),
@@ -200,7 +216,7 @@ class _SearchPageState extends State<SearchPage> {
                 ],
               ),
             ),
-            
+
             // Results
             Expanded(
               child: Consumer<SpotifyService>(
@@ -314,7 +330,8 @@ class _SearchPageState extends State<SearchPage> {
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     itemCount: _searchResults.length,
                     itemBuilder: (context, index) {
                       final artist = _searchResults[index];
@@ -358,6 +375,12 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
+  void _triggerExampleSearch(String query) {
+    _searchController.text = query;
+    FocusScope.of(context).unfocus();
+    _performSearch(query);
+  }
+
   Widget _buildEmptyState(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -369,7 +392,7 @@ class _SearchPageState extends State<SearchPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const SizedBox(height: 40),
-            
+
             // Animated gradient icon container
             Container(
               padding: const EdgeInsets.all(40),
@@ -394,9 +417,9 @@ class _SearchPageState extends State<SearchPage> {
                 color: colorScheme.primary,
               ),
             ),
-            
+
             const SizedBox(height: 48),
-            
+
             // Title
             Text(
               'Discover Artists',
@@ -406,9 +429,9 @@ class _SearchPageState extends State<SearchPage> {
               ),
               textAlign: TextAlign.center,
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Subtitle with better description
             Text(
               'Explore millions of artists, explore their top tracks, and dive into their musical universe',
@@ -418,9 +441,9 @@ class _SearchPageState extends State<SearchPage> {
                 height: 1.5,
               ),
             ),
-            
+
             const SizedBox(height: 40),
-            
+
             // Feature cards in grid
             GridView.count(
               crossAxisCount: 2,
@@ -435,6 +458,7 @@ class _SearchPageState extends State<SearchPage> {
                   'Followers',
                   'See artist popularity',
                   colorScheme.primary,
+                  onTap: () => _triggerExampleSearch('Taylor Swift'),
                 ),
                 _buildFeatureCard(
                   context,
@@ -442,6 +466,7 @@ class _SearchPageState extends State<SearchPage> {
                   'Trending',
                   'Discover trending artists',
                   colorScheme.secondary,
+                  onTap: () => _triggerExampleSearch('Olivia Rodrigo'),
                 ),
                 _buildFeatureCard(
                   context,
@@ -449,6 +474,7 @@ class _SearchPageState extends State<SearchPage> {
                   'Top Tracks',
                   'Explore top compositions',
                   colorScheme.tertiary,
+                  onTap: () => _triggerExampleSearch('The Weeknd'),
                 ),
                 _buildFeatureCard(
                   context,
@@ -456,12 +482,13 @@ class _SearchPageState extends State<SearchPage> {
                   'Genres',
                   'Filter by music style',
                   colorScheme.error,
+                  onTap: () => _triggerExampleSearch('Jazz'),
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 48),
-            
+
             // Call to action text
             Container(
               padding: const EdgeInsets.all(20),
@@ -491,7 +518,7 @@ class _SearchPageState extends State<SearchPage> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 40),
           ],
         ),
@@ -504,16 +531,18 @@ class _SearchPageState extends State<SearchPage> {
     IconData icon,
     String title,
     String subtitle,
-    Color accentColor,
-  ) {
+    Color accentColor, {
+    VoidCallback? onTap,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final borderRadius = BorderRadius.circular(16);
 
-    return Container(
+    final content = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: accentColor.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: borderRadius,
         border: Border.all(
           color: accentColor.withOpacity(0.2),
           width: 1,
@@ -548,6 +577,20 @@ class _SearchPageState extends State<SearchPage> {
             overflow: TextOverflow.ellipsis,
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return content;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: borderRadius,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius,
+        child: content,
       ),
     );
   }
@@ -612,7 +655,8 @@ class _SearchPageState extends State<SearchPage> {
                                 ),
                               );
                             },
-                            errorBuilder: (context, error, stackTrace) => Container(
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
@@ -646,9 +690,9 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                 ),
               ),
-              
+
               const SizedBox(width: 16),
-              
+
               // Artist Info
               Expanded(
                 child: Column(
@@ -694,7 +738,7 @@ class _SearchPageState extends State<SearchPage> {
                   ],
                 ),
               ),
-              
+
               // Chevron indicator
               Container(
                 padding: const EdgeInsets.all(8),

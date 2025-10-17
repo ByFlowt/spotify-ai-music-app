@@ -4,14 +4,19 @@ import 'dart:convert';
 import '../models/track_model.dart';
 
 class PlaylistManager extends ChangeNotifier {
+  static const String defaultAIPlaylistName = 'AI Playlist';
+
   List<Track> _myPlaylist = [];
-  List<Track> _aiGeneratedPlaylist = []; // Separate list for AI-generated tracks
+  List<Track> _aiGeneratedPlaylist =
+      []; // Separate list for AI-generated tracks
   List<Track> _identifiedSongs = []; // List for Shazam-identified songs
-  
+  String _aiPlaylistName = defaultAIPlaylistName;
+
   List<Track> get playlist => _myPlaylist;
   List<Track> get aiPlaylist => _aiGeneratedPlaylist;
   List<Track> get identifiedSongs => _identifiedSongs;
-  
+  String get aiPlaylistName => _aiPlaylistName;
+
   PlaylistManager() {
     _loadPlaylist();
   }
@@ -25,28 +30,32 @@ class PlaylistManager extends ChangeNotifier {
   Future<void> _loadPlaylist() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // Load main playlist
       final playlistJson = prefs.getString('my_playlist');
       if (playlistJson != null) {
         final List<dynamic> decoded = jsonDecode(playlistJson);
         _myPlaylist = decoded.map((item) => Track.fromJson(item)).toList();
       }
-      
+
       // Load AI playlist
       final aiPlaylistJson = prefs.getString('ai_playlist');
       if (aiPlaylistJson != null) {
         final List<dynamic> decoded = jsonDecode(aiPlaylistJson);
-        _aiGeneratedPlaylist = decoded.map((item) => Track.fromJson(item)).toList();
+        _aiGeneratedPlaylist =
+            decoded.map((item) => Track.fromJson(item)).toList();
       }
-      
+
       // Load identified songs
       final identifiedJson = prefs.getString('identified_songs');
       if (identifiedJson != null) {
         final List<dynamic> decoded = jsonDecode(identifiedJson);
         _identifiedSongs = decoded.map((item) => Track.fromJson(item)).toList();
       }
-      
+
+      _aiPlaylistName =
+          prefs.getString('ai_playlist_name') ?? defaultAIPlaylistName;
+
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
@@ -59,24 +68,25 @@ class PlaylistManager extends ChangeNotifier {
   Future<void> _savePlaylist() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // Save main playlist
       final playlistJson = jsonEncode(
         _myPlaylist.map((track) => track.toJson()).toList(),
       );
       await prefs.setString('my_playlist', playlistJson);
-      
+
       // Save AI playlist
       final aiPlaylistJson = jsonEncode(
         _aiGeneratedPlaylist.map((track) => track.toJson()).toList(),
       );
       await prefs.setString('ai_playlist', aiPlaylistJson);
-      
+
       // Save identified songs
       final identifiedJson = jsonEncode(
         _identifiedSongs.map((track) => track.toJson()).toList(),
       );
       await prefs.setString('identified_songs', identifiedJson);
+      await prefs.setString('ai_playlist_name', _aiPlaylistName);
     } catch (e) {
       if (kDebugMode) {
         print('Error saving playlist: $e');
@@ -182,10 +192,19 @@ class PlaylistManager extends ChangeNotifier {
 
   // Get main playlist count
   int get count => _myPlaylist.length;
-  
+
   // Get AI playlist count
   int get aiCount => _aiGeneratedPlaylist.length;
-  
+
   // Get identified songs count
   int get identifiedCount => _identifiedSongs.length;
+
+  Future<void> setAIPlaylistName(String name) async {
+    final trimmed = name.trim();
+    final newName = trimmed.isEmpty ? defaultAIPlaylistName : trimmed;
+    if (newName == _aiPlaylistName) return;
+    _aiPlaylistName = newName;
+    await _savePlaylist();
+    notifyListeners();
+  }
 }

@@ -55,12 +55,15 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final playlistManager = context.watch<PlaylistManager>();
-    
-    final totalTracks = playlistManager.count + playlistManager.aiCount + playlistManager.identifiedCount;
-    
+
+    final totalTracks = playlistManager.count +
+        playlistManager.aiCount +
+        playlistManager.identifiedCount;
+
     // Debug logging
     if (kDebugMode) {
-      print('🎵 [MY PLAYLIST] Building page - Main: ${playlistManager.count}, AI: ${playlistManager.aiCount}, Identified: ${playlistManager.identifiedCount}, Total: $totalTracks');
+      print(
+          '🎵 [MY PLAYLIST] Building page - Main: ${playlistManager.count}, AI: ${playlistManager.aiCount}, Identified: ${playlistManager.identifiedCount}, Total: $totalTracks');
     }
 
     return Scaffold(
@@ -142,21 +145,23 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
                         _showMainPlaylist,
                         (value) => setState(() => _showMainPlaylist = value),
                         playlistManager,
-                        onClear: () => _showClearDialog(context, playlistManager, 'main'),
+                        onClear: () =>
+                            _showClearDialog(context, playlistManager, 'main'),
                       ),
 
                     // AI Playlist Section (Folder)
                     if (playlistManager.aiCount > 0)
                       _buildPlaylistSection(
                         context,
-                        'AI Playlist',
+                        playlistManager.aiPlaylistName,
                         playlistManager.aiPlaylist,
                         Icons.auto_awesome_rounded,
                         _showAIPlaylist,
                         (value) => setState(() => _showAIPlaylist = value),
                         playlistManager,
                         isAIPlaylist: true,
-                        onClear: () => _showClearDialog(context, playlistManager, 'ai'),
+                        onClear: () =>
+                            _showClearDialog(context, playlistManager, 'ai'),
                       ),
 
                     // Identified Songs Section (Shazam)
@@ -170,7 +175,8 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
                         (value) => setState(() => _showIdentifiedSongs = value),
                         playlistManager,
                         isIdentifiedPlaylist: true,
-                        onClear: () => _showClearDialog(context, playlistManager, 'identified'),
+                        onClear: () => _showClearDialog(
+                            context, playlistManager, 'identified'),
                       ),
                   ],
                 ),
@@ -223,7 +229,9 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
                     child: Icon(
                       icon,
                       size: 24,
-                      color: isAIPlaylist ? colorScheme.secondary : colorScheme.primary,
+                      color: isAIPlaylist
+                          ? colorScheme.secondary
+                          : colorScheme.primary,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -269,7 +277,7 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
               ),
             ),
           ),
-          
+
           // Tracks List (Expandable)
           if (isExpanded)
             Padding(
@@ -386,9 +394,9 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
                   ),
                 ),
               ),
-              
+
               const SizedBox(width: 12),
-              
+
               // Album Cover
               Container(
                 width: 50,
@@ -416,9 +424,9 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
                         ),
                 ),
               ),
-              
+
               const SizedBox(width: 12),
-              
+
               // Track Info
               Expanded(
                 child: Column(
@@ -444,7 +452,7 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
                   ],
                 ),
               ),
-              
+
               // Duration and Remove Button
               Column(
                 children: [
@@ -459,8 +467,9 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
                       if (isAIPlaylist) {
                         playlistManager.removeTrackFromAI(track.id);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Removed from AI Playlist'),
+                          SnackBar(
+                            content: Text(
+                                'Removed from ${playlistManager.aiPlaylistName}'),
                             backgroundColor: Colors.orange,
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -498,8 +507,10 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
   ) {
     final isAI = playlistType == 'ai';
     final isIdentified = playlistType == 'identified';
-    final playlistName = isAI ? 'AI Playlist' : (isIdentified ? 'Identified Songs' : 'My Playlist');
-    
+    final playlistName = isAI
+        ? playlistManager.aiPlaylistName
+        : (isIdentified ? 'Identified Songs' : 'My Playlist');
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -539,7 +550,8 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
     );
   }
 
-  void _showClearAllDialog(BuildContext context, PlaylistManager playlistManager) {
+  void _showClearAllDialog(
+      BuildContext context, PlaylistManager playlistManager) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -574,10 +586,11 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
     );
   }
 
-  Future<void> _exportToSpotify(BuildContext context, String playlistName, List<dynamic> tracks) async {
+  Future<void> _exportToSpotify(
+      BuildContext context, String playlistName, List<dynamic> tracks) async {
     final authService = context.read<SpotifyAuthService>();
     final spotifyService = context.read<SpotifyService>();
-    
+
     if (!authService.isAuthenticated) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -619,7 +632,7 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
 
       final userId = userProfile['id'] as String;
       final accessToken = authService.accessToken;
-      
+
       if (accessToken == null || accessToken.isEmpty) {
         if (context.mounted) Navigator.pop(context);
         throw Exception('Access token not available. Please re-login.');
@@ -664,19 +677,19 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
       // Add tracks to playlist (split into chunks if needed, Spotify has limits)
       const maxTracksPerRequest = 100;
       bool success = true;
-      
+
       for (int i = 0; i < trackUris.length; i += maxTracksPerRequest) {
         final end = (i + maxTracksPerRequest > trackUris.length)
             ? trackUris.length
             : i + maxTracksPerRequest;
         final chunk = trackUris.sublist(i, end);
-        
+
         final chunkSuccess = await spotifyService.addTracksToPlaylist(
           userAccessToken: accessToken,
           playlistId: playlistId,
           trackUris: chunk,
         );
-        
+
         if (!chunkSuccess) {
           success = false;
           break;
@@ -694,7 +707,8 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
                   const Icon(Icons.check_circle, color: Colors.white),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text('✅ Playlist "$playlistName" with ${trackUris.length} tracks exported to Spotify!'),
+                    child: Text(
+                        '✅ Playlist "$playlistName" with ${trackUris.length} tracks exported to Spotify!'),
                   ),
                 ],
               ),
@@ -730,4 +744,3 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
     }
   }
 }
-

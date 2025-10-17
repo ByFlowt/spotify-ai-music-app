@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../services/ai_playlist_service.dart';
+import '../services/playlist_manager.dart';
 import '../models/track_model.dart';
 import 'track_detail_page.dart';
 
@@ -20,10 +21,18 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
   String _selectedMood = 'balanced';
   bool _isGenerating = false;
   double _generatingProgress = 0.0;
+  late TextEditingController _playlistNameController;
+  late FocusNode _playlistNameFocusNode;
+  String? _lastSyncedPlaylistName;
+  bool _didInitPlaylistName = false;
 
   @override
   void initState() {
     super.initState();
+    _playlistNameController = TextEditingController();
+    _playlistNameController.addListener(_handlePlaylistNameChanged);
+    _playlistNameFocusNode = FocusNode();
+    _playlistNameFocusNode.addListener(_handlePlaylistNameFocusChange);
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -41,353 +50,454 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
 
   @override
   void dispose() {
+    _playlistNameController.removeListener(_handlePlaylistNameChanged);
+    _playlistNameController.dispose();
+    _playlistNameFocusNode.removeListener(_handlePlaylistNameFocusChange);
+    _playlistNameFocusNode.dispose();
     _pulseController.dispose();
     _rotateController.dispose();
     super.dispose();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didInitPlaylistName) {
+      final playlistManager = context.read<PlaylistManager>();
+      final initialName = playlistManager.aiPlaylistName;
+      _playlistNameController.text = initialName;
+      _lastSyncedPlaylistName = initialName;
+      _didInitPlaylistName = true;
+    }
+  }
+
+  void _handlePlaylistNameChanged() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+  }
+
+  void _handlePlaylistNameFocusChange() {
+    if (!_playlistNameFocusNode.hasFocus && mounted) {
+      final playlistManager = context.read<PlaylistManager>();
+      _persistPlaylistName(playlistManager);
+    }
+  }
+
+  String _resolvePlaylistName(PlaylistManager playlistManager) {
+    final trimmed = _playlistNameController.text.trim();
+    return trimmed.isEmpty ? PlaylistManager.defaultAIPlaylistName : trimmed;
+  }
+
+  Future<String> _persistPlaylistName(PlaylistManager playlistManager) async {
+    final name = _resolvePlaylistName(playlistManager);
+    await playlistManager.setAIPlaylistName(name);
+    _lastSyncedPlaylistName = name;
+    return name;
+  }
+
+  String _displayPlaylistName(PlaylistManager playlistManager) {
+    final trimmed = _playlistNameController.text.trim();
+    if (trimmed.isNotEmpty) {
+      return trimmed;
+    }
+    if (_playlistNameFocusNode.hasFocus) {
+      return PlaylistManager.defaultAIPlaylistName;
+    }
+    return playlistManager.aiPlaylistName;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final aiService = context.watch<AIPlaylistService>();
+    final playlistManager = context.watch<PlaylistManager>();
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final providerName = playlistManager.aiPlaylistName;
+    if (!_playlistNameFocusNode.hasFocus &&
+        _lastSyncedPlaylistName != providerName) {
+      _playlistNameController.text = providerName;
+      _lastSyncedPlaylistName = providerName;
+    }
+    final displayedPlaylistName = _displayPlaylistName(playlistManager);
 
     return Stack(
       children: [
         Scaffold(
           body: CustomScrollView(
             slivers: [
-          // Expressive App Bar with playful animations
-          SliverAppBar.large(
-            expandedHeight: 200,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  RotationTransition(
-                    turns: _rotateController,
-                    child: Icon(
-                      Icons.auto_awesome,
-                      color: colorScheme.primary,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'AI Playlist',
-                    style: theme.textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      colorScheme.primaryContainer,
-                      colorScheme.secondaryContainer,
-                    ],
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    // Animated circles in background
-                    ...List.generate(5, (index) {
-                      return AnimatedBuilder(
-                        animation: _rotateController,
-                        builder: (context, child) {
-                          return Positioned(
-                            left: 50.0 + index * 60 + math.sin(_rotateController.value * 2 * math.pi + index) * 20,
-                            top: 100.0 + math.cos(_rotateController.value * 2 * math.pi + index) * 30,
-                            child: Opacity(
-                              opacity: 0.1,
-                              child: Container(
-                                width: 40 + index * 10.0,
-                                height: 40 + index * 10.0,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: colorScheme.primary,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Content
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Description
-                  Card(
-                    color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.psychology_outlined,
-                            size: 48,
-                            color: colorScheme.primary,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Let AI create your perfect playlist',
-                            style: theme.textTheme.titleLarge,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Using advanced algorithms to analyze your taste and mood',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Mood Selection
-                  Text(
-                    'Select Your Mood',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildMoodChip(
-                          context,
-                          'balanced',
-                          Icons.favorite_border,
-                          'Balanced',
-                          Colors.blue,
-                        ),
-                        _buildMoodChip(
-                          context,
-                          'energetic',
-                          Icons.flash_on,
-                          'Energetic',
-                          Colors.orange,
-                        ),
-                        _buildMoodChip(
-                          context,
-                          'chill',
-                          Icons.spa,
-                          'Chill',
-                          Colors.purple,
-                        ),
-                        _buildMoodChip(
-                          context,
-                          'party',
-                          Icons.celebration,
-                          'Party',
-                          Colors.pink,
-                        ),
-                        _buildMoodChip(
-                          context,
-                          'focus',
-                          Icons.center_focus_strong,
-                          'Focus',
-                          Colors.teal,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Quick Actions
-                  Text(
-                    'Quick Playlists',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
+              // Expressive App Bar with playful animations
+              SliverAppBar.large(
+                expandedHeight: 200,
+                pinned: true,
+                flexibleSpace: FlexibleSpaceBar(
+                  title: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: _buildQuickActionCard(
-                          context,
-                          'Workout',
-                          Icons.fitness_center,
-                          Colors.red,
-                          () => _generatePlaylist(aiService, 'workout'),
+                      RotationTransition(
+                        turns: _rotateController,
+                        child: Icon(
+                          Icons.auto_awesome,
+                          color: colorScheme.primary,
+                          size: 28,
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildQuickActionCard(
-                          context,
-                          'Study',
-                          Icons.school,
-                          Colors.indigo,
-                          () => _generatePlaylist(aiService, 'focus'),
+                      Text(
+                        'AI Playlist',
+                        style: theme.textTheme.headlineLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: 32),
-
-                  // Generate Button
-                  ScaleTransition(
-                    scale: _pulseAnimation,
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 64,
-                      child: ElevatedButton(
-                        onPressed: aiService.isGenerating
-                            ? null
-                            : () => _generatePlaylist(aiService, _selectedMood),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colorScheme.primary,
-                          foregroundColor: colorScheme.onPrimary,
-                          elevation: 8,
-                          shadowColor: colorScheme.primary.withOpacity(0.5),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (aiService.isGenerating)
-                              const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                  color: Colors.white,
+                  background: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          colorScheme.primaryContainer,
+                          colorScheme.secondaryContainer,
+                        ],
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Animated circles in background
+                        ...List.generate(5, (index) {
+                          return AnimatedBuilder(
+                            animation: _rotateController,
+                            builder: (context, child) {
+                              return Positioned(
+                                left: 50.0 +
+                                    index * 60 +
+                                    math.sin(_rotateController.value *
+                                                2 *
+                                                math.pi +
+                                            index) *
+                                        20,
+                                top: 100.0 +
+                                    math.cos(_rotateController.value *
+                                                2 *
+                                                math.pi +
+                                            index) *
+                                        30,
+                                child: Opacity(
+                                  opacity: 0.1,
+                                  child: Container(
+                                    width: 40 + index * 10.0,
+                                    height: 40 + index * 10.0,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: colorScheme.primary,
+                                    ),
+                                  ),
                                 ),
-                              )
-                            else
-                              const Icon(Icons.auto_awesome, size: 28),
-                            const SizedBox(width: 12),
-                            Text(
-                              aiService.isGenerating
-                                  ? 'Generating...'
-                                  : 'Generate AI Playlist',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
+                              );
+                            },
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Content
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Description
+                      Card(
+                        color: colorScheme.surfaceContainerHighest
+                            .withOpacity(0.3),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.psychology_outlined,
+                                size: 48,
+                                color: colorScheme.primary,
                               ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Let AI create your perfect playlist',
+                                style: theme.textTheme.titleLarge,
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Using advanced algorithms to analyze your taste and mood',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Mood Selection
+                      Text(
+                        'Select Your Mood',
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 16),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildMoodChip(
+                              context,
+                              'balanced',
+                              Icons.favorite_border,
+                              'Balanced',
+                              Colors.blue,
+                            ),
+                            _buildMoodChip(
+                              context,
+                              'energetic',
+                              Icons.flash_on,
+                              'Energetic',
+                              Colors.orange,
+                            ),
+                            _buildMoodChip(
+                              context,
+                              'chill',
+                              Icons.spa,
+                              'Chill',
+                              Colors.purple,
+                            ),
+                            _buildMoodChip(
+                              context,
+                              'party',
+                              Icons.celebration,
+                              'Party',
+                              Colors.pink,
+                            ),
+                            _buildMoodChip(
+                              context,
+                              'focus',
+                              Icons.center_focus_strong,
+                              'Focus',
+                              Colors.teal,
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ),
 
-                  // Progress Indicator with Enhanced Details
-                  if (aiService.isGenerating) ...[
-                    const SizedBox(height: 24),
-                    Card(
-                      elevation: 4,
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          children: [
-                            Row(
+                      const SizedBox(height: 32),
+                      Text(
+                        'Playlist Name',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _playlistNameController,
+                        focusNode: _playlistNameFocusNode,
+                        textInputAction: TextInputAction.done,
+                        decoration: InputDecoration(
+                          labelText: 'AI playlist name',
+                          hintText: 'Name your playlist',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onSubmitted: (_) =>
+                            _persistPlaylistName(playlistManager),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Quick Actions
+                      Text(
+                        'Quick Playlists',
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildQuickActionCard(
+                              context,
+                              'Workout',
+                              Icons.fitness_center,
+                              Colors.red,
+                              () => _generatePlaylist(aiService, 'workout'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildQuickActionCard(
+                              context,
+                              'Study',
+                              Icons.school,
+                              Colors.indigo,
+                              () => _generatePlaylist(aiService, 'focus'),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Generate Button
+                      ScaleTransition(
+                        scale: _pulseAnimation,
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 64,
+                          child: ElevatedButton(
+                            onPressed: aiService.isGenerating
+                                ? null
+                                : () =>
+                                    _generatePlaylist(aiService, _selectedMood),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
+                              elevation: 8,
+                              shadowColor: colorScheme.primary.withOpacity(0.5),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                SizedBox(
-                                  width: 32,
-                                  height: 32,
-                                  child: CircularProgressIndicator(
-                                    value: aiService.progress,
-                                    strokeWidth: 3,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        aiService.currentStep,
-                                        style: theme.textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${(aiService.progress * 100).toInt()}% complete',
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
+                                if (aiService.isGenerating)
+                                  const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 3,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                else
+                                  const Icon(Icons.auto_awesome, size: 28),
+                                const SizedBox(width: 12),
+                                Text(
+                                  aiService.isGenerating
+                                      ? 'Generating...'
+                                      : 'Generate AI Playlist',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
-                            LinearProgressIndicator(
-                              value: aiService.progress,
-                              minHeight: 8,
-                              borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+
+                      // Progress Indicator with Enhanced Details
+                      if (aiService.isGenerating) ...[
+                        const SizedBox(height: 24),
+                        Card(
+                          elevation: 4,
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 32,
+                                      height: 32,
+                                      child: CircularProgressIndicator(
+                                        value: aiService.progress,
+                                        strokeWidth: 3,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            aiService.currentStep,
+                                            style: theme.textTheme.titleMedium
+                                                ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${(aiService.progress * 100).toInt()}% complete',
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color:
+                                                  colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                LinearProgressIndicator(
+                                  value: aiService.progress,
+                                  minHeight: 8,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'This may take a moment. Please wait...',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 12),
+                          ),
+                        ),
+                      ],
+
+                      // Generated Tracks
+                      if (aiService.generatedTracks.isNotEmpty) ...[
+                        const SizedBox(height: 32),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
                             Text(
-                              'This may take a moment. Please wait...',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                                fontStyle: FontStyle.italic,
-                              ),
-                              textAlign: TextAlign.center,
+                              'Your "$displayedPlaylistName"',
+                              style: theme.textTheme.titleLarge,
+                            ),
+                            FilledButton.tonalIcon(
+                              onPressed: () => _savePlaylist(aiService),
+                              icon: const Icon(Icons.save),
+                              label: const Text('Save All'),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                  ],
-
-                  // Generated Tracks
-                  if (aiService.generatedTracks.isNotEmpty) ...[
-                    const SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Your AI Playlist',
-                          style: theme.textTheme.titleLarge,
-                        ),
-                        FilledButton.tonalIcon(
-                          onPressed: () => _savePlaylist(aiService),
-                          icon: const Icon(Icons.save),
-                          label: const Text('Save All'),
-                        ),
+                        const SizedBox(height: 16),
+                        ...aiService.generatedTracks.asMap().entries.map(
+                              (entry) => _buildTrackCard(
+                                context,
+                                entry.value,
+                                entry.key,
+                              ),
+                            ),
                       ],
-                    ),
-                    const SizedBox(height: 16),
-                    ...aiService.generatedTracks.asMap().entries.map(
-                          (entry) => _buildTrackCard(
-                            context,
-                            entry.value,
-                            entry.key,
-                          ),
-                        ),
-                  ],
-                ],
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
         ),
         // Loading Overlay
         if (_isGenerating)
@@ -642,11 +752,15 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
     );
   }
 
-  Future<void> _generatePlaylist(AIPlaylistService aiService, String mood) async {
+  Future<void> _generatePlaylist(
+      AIPlaylistService aiService, String mood) async {
     setState(() {
       _isGenerating = true;
       _generatingProgress = 0.0;
     });
+
+    final playlistManager = context.read<PlaylistManager>();
+    final playlistName = await _persistPlaylistName(playlistManager);
 
     try {
       // Simulate progress updates (0% -> 30% during initial setup)
@@ -670,10 +784,10 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
       if (aiService.generatedTracks.isNotEmpty) {
         await aiService.saveGeneratedPlaylist();
         setState(() => _generatingProgress = 1.0);
-        
+
         // Brief pause to show 100% completion
         await Future.delayed(const Duration(milliseconds: 500));
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -682,7 +796,9 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
                   const Icon(Icons.check_circle, color: Colors.white),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text('🎉 ${aiService.generatedTracks.length} tracks saved to AI Playlist folder! Go to "My Playlist" tab to export to Spotify.'),
+                    child: Text(
+                      '${aiService.generatedTracks.length} tracks saved to "$playlistName". Open My Playlist to export them to Spotify.',
+                    ),
                   ),
                 ],
               ),
@@ -731,13 +847,18 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
   Future<void> _savePlaylist(AIPlaylistService aiService) async {
     await aiService.saveGeneratedPlaylist();
     if (mounted) {
+      final playlistName = _playlistNameController.text;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
               const Icon(Icons.check_circle, color: Colors.white),
               const SizedBox(width: 12),
-              Text('${aiService.generatedTracks.length} tracks saved to your playlist!'),
+              Expanded(
+                child: Text(
+                  '${aiService.generatedTracks.length} tracks saved to "$playlistName".',
+                ),
+              ),
             ],
           ),
           backgroundColor: Colors.green,
