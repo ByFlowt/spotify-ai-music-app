@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import '../models/track_model.dart';
 import '../services/spotify_service.dart';
 import '../services/playlist_manager.dart';
+import '../services/web_audio_recorder.dart';
+import '../services/api_proxy_service.dart';
 import 'track_detail_page.dart';
 
 class SongSearchPage extends StatefulWidget {
@@ -767,8 +769,11 @@ class ShazamRecordingDialog extends StatefulWidget {
 class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
+  WebAudioRecorder? _audioRecorder;
   bool _isRecording = false;
+  bool _isProcessing = false;
   String _statusText = 'Tap to start listening...';
+  String? _error;
 
   @override
   void initState() {
@@ -777,57 +782,171 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
+    
+    // Initialize audio recorder for web
+    if (kIsWeb) {
+      _audioRecorder = WebAudioRecorder();
+    }
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _audioRecorder?.dispose();
     super.dispose();
   }
 
-  void _toggleRecording() async {
+  Future<void> _toggleRecording() async {
     if (_isRecording) {
       // Stop recording and identify
       setState(() {
         _statusText = 'Identifying song...';
         _isRecording = false;
+        _isProcessing = true;
       });
       
-      // Simulate identification (in real app, this would call ShazamService)
-      await Future.delayed(const Duration(seconds: 2));
-      
-      if (mounted) {
-        Navigator.pop(context);
-        _showFeatureComingSoon();
+      try {
+        // Stop recording and get audio data
+        final audioBase64 = await _audioRecorder?.stopRecording();
+        
+        if (audioBase64 == null || audioBase64.isEmpty) {
+          throw Exception('No audio data recorded');
+        }
+
+        // Call the backend API to identify the song
+        final result = await ApiProxyService.recognizeAudio(
+          audioBase64: audioBase64,
+        );
+        
+        if (mounted) {
+          Navigator.pop(context);
+          
+          if (result['status'] == 'success' && result['result'] != null) {
+            final songData = result['result'];
+            _showSongIdentified(
+              songData['title'] ?? 'Unknown',
+              songData['artist'] ?? 'Unknown',
+            );
+          } else {
+            _showError('Could not identify the song. Please try again or search manually.');
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _error = e.toString();
+            _statusText = 'Error: ${e.toString()}';
+            _isProcessing = false;
+          });
+        }
       }
     } else {
-      // Start recording
+      // Request permission and start recording
+      if (_audioRecorder == null) {
+        _showError('Audio recording is only available in web browsers');
+        return;
+      }
+
       setState(() {
-        _isRecording = true;
-        _statusText = 'Listening...';
+        _statusText = 'Requesting microphone access...';
       });
+
+      final initialized = await _audioRecorder!.initialize();
+      
+      if (!initialized) {
+        setState(() {
+          _error = _audioRecorder!.error;
+          _statusText = 'Microphone access denied';
+        });
+        return;
+      }
+
+      final started = await _audioRecorder!.startRecording();
+      
+      if (started) {
+        setState(() {
+          _isRecording = true;
+          _statusText = 'Listening... (tap to stop)';
+          _error = null;
+        });
+        
+        // Auto-stop after 10 seconds
+        Future.delayed(const Duration(seconds: 10), () {
+          if (_isRecording && mounted) {
+            _toggleRecording();
+          }
+        });
+      } else {
+        setState(() {
+          _error = _audioRecorder!.error;
+          _statusText = 'Failed to start recording';
+        });
+      }
     }
   }
 
-  void _showFeatureComingSoon() {
+  void _showSongIdentified(String title, String artist) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.construction, color: Colors.orange),
+            Icon(Icons.check_circle, color: Colors.green),
             SizedBox(width: 12),
-            Text('Coming Soon!'),
+            Text('Song Identified!'),
           ],
         ),
-        content: const Text(
-          'Audio recognition with Shazam/AudD will be available soon!\n\n'
-          'For now, you can search songs by typing the name or artist.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              artist,
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Search for this song to add it to your playlist!'),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Got it'),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.orange),
+            SizedBox(width: 12),
+            Text('Recognition Failed'),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
           ),
         ],
       ),

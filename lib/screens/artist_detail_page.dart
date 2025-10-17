@@ -71,14 +71,12 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
           notification.disallowIndicator();
           return true;
         },
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (scrollNotification) {
-            if (scrollNotification is ScrollUpdateNotification) {
-              // Detect pulling down when at the top
-              if (scrollNotification.metrics.pixels < -100 && 
-                  scrollNotification.metrics.atEdge) {
-                Navigator.pop(context);
-              }
+        child: NotificationListener<OverscrollNotification>(
+          onNotification: (notification) {
+            // Only close when overscrolling at the top (pulling down past the top)
+            if (notification.metrics.pixels <= 0 && 
+                notification.overscroll < -100) {
+              Navigator.pop(context);
             }
             return false;
           },

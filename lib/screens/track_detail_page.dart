@@ -133,14 +133,12 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
           notification.disallowIndicator();
           return true;
         },
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (scrollNotification) {
-            if (scrollNotification is ScrollUpdateNotification) {
-              // Detect pulling down when at the top
-              if (scrollNotification.metrics.pixels < -100 && 
-                  scrollNotification.metrics.atEdge) {
-                Navigator.pop(context);
-              }
+        child: NotificationListener<OverscrollNotification>(
+          onNotification: (notification) {
+            // Only close when overscrolling at the top (pulling down past the top)
+            if (notification.metrics.pixels <= 0 && 
+                notification.overscroll < -100) {
+              Navigator.pop(context);
             }
             return false;
           },
@@ -334,25 +332,6 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
                               dataModuleStyle: const QrDataModuleStyle(
                                 dataModuleShape: QrDataModuleShape.square,
                                 color: Colors.black,
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Open in Spotify Button
-                          FilledButton.icon(
-                            onPressed: _openInSpotify,
-                            icon: const Icon(Icons.open_in_new_rounded),
-                            label: const Text('Open in Spotify'),
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 16,
-                              ),
-                              backgroundColor: const Color(0xFF1DB954),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
                               ),
                             ),
                           ),
