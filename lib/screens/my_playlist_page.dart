@@ -567,7 +567,7 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
       return;
     }
 
-    // Show loading dialog
+    // Show loading dialog with better UX
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -575,9 +575,14 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(),
+            const CircularProgressIndicator(),
             const SizedBox(height: 16),
-            const Text('Creating Spotify playlist...'),
+            const Text('Creating and exporting playlist...'),
+            const SizedBox(height: 8),
+            Text(
+              'Exporting ${tracks.length} tracks',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ),
       ),
@@ -587,37 +592,42 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
       // Get user profile
       final userProfile = authService.userProfile;
       if (userProfile == null) {
-        Navigator.pop(context);
+        if (context.mounted) Navigator.pop(context);
         throw Exception('User profile not available');
       }
 
       final userId = userProfile['id'] as String;
-      final accessToken = authService.accessToken!;
+      final accessToken = authService.accessToken;
+      
+      if (accessToken == null || accessToken.isEmpty) {
+        if (context.mounted) Navigator.pop(context);
+        throw Exception('Access token not available. Please re-login.');
+      }
 
-      // Convert Track objects to Spotify URIs
-      final trackUris = tracks
-          .map((track) {
-            if (track is Track) {
-              return 'spotify:track:${track.id}';
-            }
-            return null;
-          })
-          .whereType<String>()
-          .toList();
+      // Convert Track objects to Spotify URIs with validation
+      final trackUris = <String>[];
+      for (var track in tracks) {
+        if (track is Track && track.id.isNotEmpty) {
+          trackUris.add('spotify:track:${track.id}');
+        } else if (track is Map && track['id'] != null) {
+          trackUris.add('spotify:track:${track['id']}');
+        }
+      }
 
       if (trackUris.isEmpty) {
-        Navigator.pop(context);
+        if (context.mounted) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No valid tracks to export'),
+            content: Text('No valid tracks found to export'),
             behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.orange,
           ),
         );
         return;
       }
 
       // Create playlist
-      final playlistId = await spotifyService.createPlaylist(
+      String? playlistId = await spotifyService.createPlaylist(
         userAccessToken: accessToken,
         userId: userId,
         playlistName: playlistName,
@@ -625,41 +635,77 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
         isPublic: false,
       );
 
-      if (playlistId == null) {
-        Navigator.pop(context);
-        throw Exception('Failed to create playlist');
+      if (playlistId == null || playlistId.isEmpty) {
+        if (context.mounted) Navigator.pop(context);
+        throw Exception('Failed to create playlist on Spotify');
       }
 
-      // Add tracks to playlist
-      final success = await spotifyService.addTracksToPlaylist(
-        userAccessToken: accessToken,
-        playlistId: playlistId,
-        trackUris: trackUris,
-      );
+      // Add tracks to playlist (split into chunks if needed, Spotify has limits)
+      const maxTracksPerRequest = 100;
+      bool success = true;
+      
+      for (int i = 0; i < trackUris.length; i += maxTracksPerRequest) {
+        final end = (i + maxTracksPerRequest > trackUris.length)
+            ? trackUris.length
+            : i + maxTracksPerRequest;
+        final chunk = trackUris.sublist(i, end);
+        
+        final chunkSuccess = await spotifyService.addTracksToPlaylist(
+          userAccessToken: accessToken,
+          playlistId: playlistId,
+          trackUris: chunk,
+        );
+        
+        if (!chunkSuccess) {
+          success = false;
+          break;
+        }
+      }
 
-      Navigator.pop(context);
+      if (context.mounted) Navigator.pop(context);
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✅ Playlist "$playlistName" exported to Spotify!'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('✅ Playlist "$playlistName" with ${trackUris.length} tracks exported to Spotify!'),
+                  ),
+                ],
+              ),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       } else {
-        throw Exception('Failed to add tracks to playlist');
+        throw Exception('Failed to add some tracks to the playlist');
       }
     } catch (e) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Export failed: $e'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('Export failed: ${e.toString()}'),
+                ),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 }

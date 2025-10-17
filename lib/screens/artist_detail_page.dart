@@ -65,9 +65,15 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        Navigator.pop(context);
+      },
+      child: Scaffold(
+        body: CustomScrollView(
+          slivers: [
           // App Bar with Artist Image
           SliverAppBar(
             expandedHeight: 300,
@@ -280,6 +286,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
             child: SizedBox(height: 24),
           ),
         ],
+      ),
       ),
     );
   }

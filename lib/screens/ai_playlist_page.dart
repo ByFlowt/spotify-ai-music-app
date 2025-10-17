@@ -18,6 +18,8 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
   late AnimationController _rotateController;
   late Animation<double> _pulseAnimation;
   String _selectedMood = 'balanced';
+  bool _isGenerating = false;
+  double _generatingProgress = 0.0;
 
   @override
   void initState() {
@@ -50,9 +52,11 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
+    return Stack(
+      children: [
+        Scaffold(
+          body: CustomScrollView(
+            slivers: [
           // Expressive App Bar with playful animations
           SliverAppBar.large(
             expandedHeight: 200,
@@ -384,6 +388,83 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
           ),
         ],
       ),
+        ),
+        // Loading Overlay
+        if (_isGenerating)
+          Container(
+            color: Colors.black.withOpacity(0.5),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Animated spinner
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: colorScheme.primary.withOpacity(0.3),
+                        width: 4,
+                      ),
+                    ),
+                    child: RotationTransition(
+                      turns: _rotateController,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border(
+                            top: BorderSide(
+                              color: colorScheme.primary,
+                              width: 4,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Creating your AI Playlist...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Progress indicator
+                  Container(
+                    width: 200,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(2),
+                      color: Colors.white.withOpacity(0.2),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: _generatingProgress,
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${(_generatingProgress * 100).toStringAsFixed(0)}%',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -562,42 +643,87 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
   }
 
   Future<void> _generatePlaylist(AIPlaylistService aiService, String mood) async {
-    // Generate the playlist
-    switch (mood) {
-      case 'workout':
-        await aiService.generateWorkoutPlaylist();
-        break;
-      case 'focus':
-        await aiService.generateFocusPlaylist();
-        break;
-      default:
-        await aiService.generateSmartPlaylist(mood: mood);
-    }
-    
-    // Automatically save the generated tracks to the main playlist
-    if (aiService.generatedTracks.isNotEmpty) {
-      await aiService.saveGeneratedPlaylist();
-      
+    setState(() {
+      _isGenerating = true;
+      _generatingProgress = 0.0;
+    });
+
+    try {
+      // Simulate progress updates (0% -> 30% during initial setup)
+      await Future.delayed(const Duration(milliseconds: 200));
+      setState(() => _generatingProgress = 0.3);
+
+      // Generate the playlist (30% -> 70% during generation)
+      switch (mood) {
+        case 'workout':
+          await aiService.generateWorkoutPlaylist();
+          break;
+        case 'focus':
+          await aiService.generateFocusPlaylist();
+          break;
+        default:
+          await aiService.generateSmartPlaylist(mood: mood);
+      }
+      setState(() => _generatingProgress = 0.7);
+
+      // Save the generated tracks (70% -> 100% during saving)
+      if (aiService.generatedTracks.isNotEmpty) {
+        await aiService.saveGeneratedPlaylist();
+        setState(() => _generatingProgress = 1.0);
+        
+        // Brief pause to show 100% completion
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('🎉 ${aiService.generatedTracks.length} tracks saved to AI Playlist folder! Go to "My Playlist" tab to export to Spotify.'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle, color: Colors.white),
+                const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text('🎉 ${aiService.generatedTracks.length} tracks saved to AI Playlist folder! Go to "My Playlist" tab to export to Spotify.'),
+                  child: Text('Error creating playlist: ${e.toString()}'),
                 ),
               ],
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            duration: const Duration(seconds: 5),
+            duration: const Duration(seconds: 4),
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGenerating = false;
+          _generatingProgress = 0.0;
+        });
       }
     }
   }

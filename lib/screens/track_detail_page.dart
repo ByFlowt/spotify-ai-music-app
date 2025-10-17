@@ -219,9 +219,15 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        Navigator.pop(context);
+      },
+      child: Scaffold(
+        body: CustomScrollView(
+          slivers: [
           // App Bar with Album Art
           SliverAppBar(
             expandedHeight: 300,
@@ -590,6 +596,7 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
