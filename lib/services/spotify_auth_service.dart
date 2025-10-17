@@ -29,8 +29,7 @@ class SpotifyAuthService extends ChangeNotifier {
   // GitHub Pages URL - must match Spotify Dashboard redirect URI
   static const String redirectUri = 'https://byflowt.github.io/spotify-ai-music-app/';
   
-  final FlutterSecureStorage? _secureStorage =
-      kIsWeb ? null : const FlutterSecureStorage();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   
   String? _accessToken;
   String? _refreshToken;
@@ -57,37 +56,6 @@ class SpotifyAuthService extends ChangeNotifier {
       _checkForAuthCallback();
     }
   }
-
-  Future<String?> _readStorage(String key) async {
-    if (kIsWeb) {
-      return html.window.localStorage[key];
-    }
-    return _secureStorage?.read(key: key);
-  }
-
-  Future<void> _writeStorage(String key, String? value) async {
-    if (kIsWeb) {
-      if (value == null) {
-        html.window.localStorage.remove(key);
-      } else {
-        html.window.localStorage[key] = value;
-      }
-      return;
-    }
-    if (value == null) {
-      await _secureStorage?.delete(key: key);
-    } else {
-      await _secureStorage?.write(key: key, value: value);
-    }
-  }
-
-  Future<void> _deleteStorage(String key) async {
-    if (kIsWeb) {
-      html.window.localStorage.remove(key);
-    } else {
-      await _secureStorage?.delete(key: key);
-    }
-  }
   
   // Check if current URL has auth callback parameters
   Future<void> _checkForAuthCallback() async {
@@ -100,7 +68,7 @@ class SpotifyAuthService extends ChangeNotifier {
       final error = uri.queryParameters['error'];
       if (error != null) {
         _logError('❌ [AUTH] OAuth error: $error');
-        await _deleteStorage('spotify_auth_in_progress');
+        await _storage.delete(key: 'spotify_auth_in_progress');
         return;
       }
       
@@ -110,13 +78,13 @@ class SpotifyAuthService extends ChangeNotifier {
         _log('🔐 [AUTH] Found authorization code in URL!');
         
         // Check if auth was in progress
-        final authInProgress = await _readStorage('spotify_auth_in_progress');
+        final authInProgress = await _storage.read(key: 'spotify_auth_in_progress');
         if (authInProgress == 'true') {
           _log('🔐 [AUTH] Processing OAuth callback with authorization code...');
-          await _deleteStorage('spotify_auth_in_progress');
+          await _storage.delete(key: 'spotify_auth_in_progress');
           
           // Get the stored code verifier
-          final codeVerifier = await _readStorage('spotify_code_verifier');
+          final codeVerifier = await _storage.read(key: 'spotify_code_verifier');
           if (codeVerifier == null) {
             _logError('❌ [AUTH] Code verifier not found!');
             return;
@@ -126,7 +94,7 @@ class SpotifyAuthService extends ChangeNotifier {
           
           // Exchange code for tokens
           await _exchangeCodeForTokens(code, codeVerifier);
-          await _deleteStorage('spotify_code_verifier');
+          await _storage.delete(key: 'spotify_code_verifier');
           
           // Fetch user profile
           await _fetchUserProfile();
@@ -144,8 +112,8 @@ class SpotifyAuthService extends ChangeNotifier {
       }
     } catch (e) {
       _logError('❌ [AUTH] Error checking for auth callback: $e');
-      await _deleteStorage('spotify_auth_in_progress');
-      await _deleteStorage('spotify_code_verifier');
+      await _storage.delete(key: 'spotify_auth_in_progress');
+      await _storage.delete(key: 'spotify_code_verifier');
     }
   }
   
@@ -212,7 +180,7 @@ class SpotifyAuthService extends ChangeNotifier {
       _log('🔐 [AUTH] Generated PKCE challenge');
       
       // Store code verifier for later use
-      await _writeStorage('spotify_code_verifier', pkce['codeVerifier']);
+      await _storage.write(key: 'spotify_code_verifier', value: pkce['codeVerifier']);
       
       // Use Authorization Code Flow with PKCE (more secure than implicit flow)
       final authUrl = Uri.https('accounts.spotify.com', '/authorize', {
@@ -233,7 +201,7 @@ class SpotifyAuthService extends ChangeNotifier {
         _log('🔐 [AUTH] Using web window navigation with PKCE...');
         
         // Store state that we're authenticating
-        await _writeStorage('spotify_auth_in_progress', 'true');
+        await _storage.write(key: 'spotify_auth_in_progress', value: 'true');
         
         // Redirect current window to Spotify auth
         html.window.location.href = authUrl.toString();
@@ -330,8 +298,8 @@ class SpotifyAuthService extends ChangeNotifier {
       _accessToken = accessToken;
       _tokenExpiry = DateTime.now().add(Duration(seconds: expiresIn ?? 3600));
       
-      await _writeStorage('spotify_access_token', _accessToken);
-      await _writeStorage('spotify_token_expiry', _tokenExpiry!.toIso8601String());
+      await _storage.write(key: 'spotify_access_token', value: _accessToken);
+      await _storage.write(key: 'spotify_token_expiry', value: _tokenExpiry!.toIso8601String());
       
       _log('✅ [AUTH] Tokens stored successfully');
       _log('🔐 [AUTH] Fetching user profile...');
@@ -402,9 +370,9 @@ class SpotifyAuthService extends ChangeNotifier {
       _log('🔐 [AUTH] Storing tokens to secure storage...');
       
       // Store tokens securely
-      await _writeStorage('spotify_access_token', _accessToken);
-      await _writeStorage('spotify_refresh_token', _refreshToken);
-      await _writeStorage('spotify_token_expiry', _tokenExpiry!.toIso8601String());
+      await _storage.write(key: 'spotify_access_token', value: _accessToken);
+      await _storage.write(key: 'spotify_refresh_token', value: _refreshToken);
+      await _storage.write(key: 'spotify_token_expiry', value: _tokenExpiry!.toIso8601String());
       
       _log('✅ [AUTH] Tokens stored successfully');
     } else {
@@ -449,11 +417,11 @@ class SpotifyAuthService extends ChangeNotifier {
         // Update refresh token if provided
         if (data['refresh_token'] != null) {
           _refreshToken = data['refresh_token'];
-          await _writeStorage('spotify_refresh_token', _refreshToken);
+          await _storage.write(key: 'spotify_refresh_token', value: _refreshToken);
         }
         
-        await _writeStorage('spotify_access_token', _accessToken);
-        await _writeStorage('spotify_token_expiry', _tokenExpiry!.toIso8601String());
+        await _storage.write(key: 'spotify_access_token', value: _accessToken);
+        await _storage.write(key: 'spotify_token_expiry', value: _tokenExpiry!.toIso8601String());
         
         _log('✅ [AUTH] Token refreshed successfully');
       } else {
@@ -505,7 +473,7 @@ class SpotifyAuthService extends ChangeNotifier {
     
     if (response.statusCode == 200) {
       _userProfile = jsonDecode(response.body);
-      await _writeStorage('spotify_user_profile', response.body);
+      await _storage.write(key: 'spotify_user_profile', value: response.body);
     }
   }
   
@@ -514,15 +482,15 @@ class SpotifyAuthService extends ChangeNotifier {
     _log('🔐 [AUTH] Loading stored tokens from secure storage...');
     
     try {
-      _accessToken = await _readStorage('spotify_access_token');
-      _refreshToken = await _readStorage('spotify_refresh_token');
+      _accessToken = await _storage.read(key: 'spotify_access_token');
+      _refreshToken = await _storage.read(key: 'spotify_refresh_token');
       
-      final expiryString = await _readStorage('spotify_token_expiry');
+      final expiryString = await _storage.read(key: 'spotify_token_expiry');
       if (expiryString != null) {
         _tokenExpiry = DateTime.parse(expiryString);
       }
       
-      final profileString = await _readStorage('spotify_user_profile');
+      final profileString = await _storage.read(key: 'spotify_user_profile');
       if (profileString != null) {
         _userProfile = jsonDecode(profileString);
       }
@@ -581,10 +549,10 @@ class SpotifyAuthService extends ChangeNotifier {
     _userProfile = null;
     _isAuthenticated = false;
     
-    await _deleteStorage('spotify_access_token');
-    await _deleteStorage('spotify_refresh_token');
-    await _deleteStorage('spotify_token_expiry');
-    await _deleteStorage('spotify_user_profile');
+    await _storage.delete(key: 'spotify_access_token');
+    await _storage.delete(key: 'spotify_refresh_token');
+    await _storage.delete(key: 'spotify_token_expiry');
+    await _storage.delete(key: 'spotify_user_profile');
     
     notifyListeners();
   }

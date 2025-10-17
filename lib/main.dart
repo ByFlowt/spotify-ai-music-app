@@ -16,7 +16,7 @@ import 'services/ai_playlist_service.dart';
 import 'services/spotify_auth_service.dart';
 import 'services/gemini_ai_service.dart';
 import 'services/shazam_service.dart';
-import 'services/theme_manager.dart';
+import 'services/theme_service.dart';
 import 'config/api_config.dart';
 
 void main() async {
@@ -58,7 +58,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeManager()),
+        ChangeNotifierProvider(create: (_) => ThemeService()),
         ChangeNotifierProvider(create: (_) => SpotifyAuthService()),
         ChangeNotifierProvider(create: (_) => SpotifyService()),
         ChangeNotifierProvider(create: (_) => PlaylistManager()),
@@ -69,147 +69,147 @@ class MyApp extends StatelessWidget {
               AIPlaylistService(spotify, playlist, auth, gemini),
         ),
       ],
-      child: Consumer<ThemeManager>(
-        builder: (context, themeManager, _) {
+      child: Consumer<ThemeService>(
+        builder: (context, themeService, child) {
           return MaterialApp(
             title: 'Spotify AI Discovery',
             debugShowCheckedModeBanner: false,
             theme: ThemeData(
-              useMaterial3: true,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: const Color(0xFF1DB954), // Spotify Green
-                brightness: Brightness.light,
-              ),
-              // Expressive typography with playful fonts
-              textTheme: GoogleFonts.spaceGroteskTextTheme().copyWith(
-                displayLarge: GoogleFonts.spaceGrotesk(
-                  fontSize: 57,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
-                displayMedium: GoogleFonts.spaceGrotesk(
-                  fontSize: 45,
-                  fontWeight: FontWeight.w700,
-                ),
-                headlineLarge: GoogleFonts.spaceGrotesk(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                ),
-                titleLarge: GoogleFonts.inter(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                ),
-                bodyLarge: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              // Expressive shapes with more rounded corners
-              cardTheme: CardThemeData(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(28),
-                ),
-              ),
-              chipTheme: ChipThemeData(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              floatingActionButtonTheme: const FloatingActionButtonThemeData(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(24)),
-                ),
-              ),
-              // Expressive elevation and shadows
-              elevatedButtonTheme: ElevatedButtonThemeData(
-                style: ElevatedButton.styleFrom(
-                  elevation: 3,
-                  shadowColor: const Color(0xFF1DB954).withOpacity(0.4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                ),
-              ),
-              // Expressive navigation bar
-              navigationBarTheme: NavigationBarThemeData(
-                height: 80,
-                elevation: 3,
-                indicatorShape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-              ),
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF1DB954), // Spotify Green
+            brightness: Brightness.light,
+          ),
+          // Expressive typography with playful fonts
+          textTheme: GoogleFonts.spaceGroteskTextTheme().copyWith(
+            displayLarge: GoogleFonts.spaceGrotesk(
+              fontSize: 57,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
             ),
-            darkTheme: ThemeData(
-              useMaterial3: true,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: const Color(0xFF1DB954),
-                brightness: Brightness.dark,
-              ),
-              textTheme: GoogleFonts.spaceGroteskTextTheme(ThemeData.dark().textTheme).copyWith(
-                displayLarge: GoogleFonts.spaceGrotesk(
-                  fontSize: 57,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                  color: Colors.white,
-                ),
-                displayMedium: GoogleFonts.spaceGrotesk(
-                  fontSize: 45,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-                headlineLarge: GoogleFonts.spaceGrotesk(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-                titleLarge: GoogleFonts.inter(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-                bodyLarge: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.white70,
-                ),
-              ),
-              cardTheme: CardThemeData(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(28),
-                ),
-              ),
-              chipTheme: ChipThemeData(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              floatingActionButtonTheme: const FloatingActionButtonThemeData(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(24)),
-                ),
-              ),
-              elevatedButtonTheme: ElevatedButtonThemeData(
-                style: ElevatedButton.styleFrom(
-                  elevation: 3,
-                  shadowColor: const Color(0xFF1DB954).withOpacity(0.4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                ),
-              ),
-              navigationBarTheme: NavigationBarThemeData(
-                height: 80,
-                elevation: 3,
-                indicatorShape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-              ),
+            displayMedium: GoogleFonts.spaceGrotesk(
+              fontSize: 45,
+              fontWeight: FontWeight.w700,
             ),
-            themeMode: themeManager.themeMode,
+            headlineLarge: GoogleFonts.spaceGrotesk(
+              fontSize: 32,
+              fontWeight: FontWeight.w700,
+            ),
+            titleLarge: GoogleFonts.inter(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+            ),
+            bodyLarge: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          // Expressive shapes with more rounded corners
+          cardTheme: CardThemeData(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+          ),
+          chipTheme: ChipThemeData(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          floatingActionButtonTheme: const FloatingActionButtonThemeData(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(24)),
+            ),
+          ),
+          // Expressive elevation and shadows
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              elevation: 3,
+              shadowColor: const Color(0xFF1DB954).withOpacity(0.4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            ),
+          ),
+          // Expressive navigation bar
+          navigationBarTheme: NavigationBarThemeData(
+            height: 80,
+            elevation: 3,
+            indicatorShape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+        ),
+        darkTheme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF1DB954),
+            brightness: Brightness.dark,
+          ),
+          textTheme: GoogleFonts.spaceGroteskTextTheme(ThemeData.dark().textTheme).copyWith(
+            displayLarge: GoogleFonts.spaceGrotesk(
+              fontSize: 57,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+              color: Colors.white,
+            ),
+            displayMedium: GoogleFonts.spaceGrotesk(
+              fontSize: 45,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+            headlineLarge: GoogleFonts.spaceGrotesk(
+              fontSize: 32,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+            titleLarge: GoogleFonts.inter(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+            bodyLarge: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              color: Colors.white70,
+            ),
+          ),
+          cardTheme: CardThemeData(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+          ),
+          chipTheme: ChipThemeData(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          floatingActionButtonTheme: const FloatingActionButtonThemeData(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(24)),
+            ),
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              elevation: 3,
+              shadowColor: const Color(0xFF1DB954).withOpacity(0.4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            ),
+          ),
+          navigationBarTheme: NavigationBarThemeData(
+            height: 80,
+            elevation: 3,
+            indicatorShape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+        ),
+            themeMode: themeService.themeMode,
             home: const AuthWrapper(),
           );
         },

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/spotify_auth_service.dart';
-import '../services/theme_manager.dart';
+import '../services/theme_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -11,13 +11,12 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final authService = context.watch<SpotifyAuthService>();
-    final themeManager = context.watch<ThemeManager>();
+    final themeService = context.watch<ThemeService>();
 
     return Scaffold(
       body: SafeArea(
@@ -78,7 +77,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     // Appearance Section
                     _buildSectionTitle('Appearance', colorScheme, textTheme),
                     const SizedBox(height: 12),
-                    _buildThemeCard(context, colorScheme, textTheme, themeManager),
+                    _buildThemeCard(context, themeService, colorScheme, textTheme),
                     const SizedBox(height: 24),
 
                     // Account Section
@@ -163,14 +162,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildThemeCard(
-    BuildContext context,
-    ColorScheme colorScheme,
-    TextTheme textTheme,
-    ThemeManager themeManager,
-  ) {
-    final currentMode = themeManager.themeMode;
-
+  Widget _buildThemeCard(BuildContext context, ThemeService themeService, ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -203,35 +195,32 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 _buildThemeOption(
                   context,
+                  themeService,
                   'System',
                   ThemeMode.system,
                   Icons.brightness_auto_rounded,
                   colorScheme,
                   textTheme,
-                  currentMode,
-                  themeManager,
                 ),
                 const SizedBox(width: 12),
                 _buildThemeOption(
                   context,
+                  themeService,
                   'Light',
                   ThemeMode.light,
                   Icons.brightness_7_rounded,
                   colorScheme,
                   textTheme,
-                  currentMode,
-                  themeManager,
                 ),
                 const SizedBox(width: 12),
                 _buildThemeOption(
                   context,
+                  themeService,
                   'Dark',
                   ThemeMode.dark,
                   Icons.brightness_4_rounded,
                   colorScheme,
                   textTheme,
-                  currentMode,
-                  themeManager,
                 ),
               ],
             ),
@@ -243,25 +232,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildThemeOption(
     BuildContext context,
+    ThemeService themeService,
     String label,
     ThemeMode mode,
     IconData icon,
     ColorScheme colorScheme,
     TextTheme textTheme,
-    ThemeMode currentMode,
-    ThemeManager themeManager,
   ) {
-    final isSelected = currentMode == mode;
+    final isSelected = themeService.themeMode == mode;
 
     return GestureDetector(
-      onTap: () async {
-        if (themeManager.themeMode == mode) {
-          return;
-        }
-        await themeManager.setThemeMode(mode);
-        if (!mounted) {
-          return;
-        }
+      onTap: () {
+        themeService.setThemeMode(mode);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Theme set to $label'),
