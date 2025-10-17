@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../models/track_model.dart';
@@ -16,17 +15,11 @@ class TrackDetailPage extends StatefulWidget {
 }
 
 class _TrackDetailPageState extends State<TrackDetailPage> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  bool _isPlaying = false;
-  bool _isLoading = false;
   bool _isAddedToPlaylist = false;
-  Duration _position = Duration.zero;
-  Duration _duration = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _setupAudioPlayer();
     _checkIfInPlaylist();
   }
 
@@ -107,85 +100,6 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
     }
   }
 
-  void _setupAudioPlayer() {
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (mounted) {
-        setState(() {
-          _isPlaying = state == PlayerState.playing;
-        });
-      }
-    });
-
-    _audioPlayer.onDurationChanged.listen((duration) {
-      if (mounted) {
-        setState(() {
-          _duration = duration;
-        });
-      }
-    });
-
-    _audioPlayer.onPositionChanged.listen((position) {
-      if (mounted) {
-        setState(() {
-          _position = position;
-        });
-      }
-    });
-
-    _audioPlayer.onPlayerComplete.listen((event) {
-      if (mounted) {
-        setState(() {
-          _isPlaying = false;
-          _position = Duration.zero;
-        });
-      }
-    });
-  }
-
-  Future<void> _togglePlayPause() async {
-    if (widget.track.previewUrl == null) {
-      _showNoPreviewSnackbar();
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      if (_isPlaying) {
-        await _audioPlayer.pause();
-      } else {
-        await _audioPlayer.play(UrlSource(widget.track.previewUrl!));
-      }
-    } catch (e) {
-      _showErrorSnackbar('Failed to play audio: ${e.toString()}');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _showNoPreviewSnackbar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.info_outline, color: Colors.white),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text('No preview available for this track'),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.orange,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -209,23 +123,24 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
   }
 
   @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) {
-        if (didPop) return;
-        Navigator.pop(context);
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        // Detect swipe down gesture (positive velocity means downward)
+        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+          Navigator.pop(context);
+        }
       },
-      child: Scaffold(
+      child: PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) {
+          if (didPop) return;
+          Navigator.pop(context);
+        },
+        child: Scaffold(
         body: CustomScrollView(
           slivers: [
           // App Bar with Album Art
@@ -367,154 +282,6 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
                   ),
 
                   const SizedBox(height: 32),
-                  if (widget.track.previewUrl != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            colorScheme.primaryContainer,
-                            colorScheme.secondaryContainer,
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.headphones_rounded,
-                                color: colorScheme.onPrimaryContainer,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                '30-Second Preview',
-                                style: textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: colorScheme.onPrimaryContainer,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Play/Pause Button
-                          Center(
-                            child: _isLoading
-                                ? CircularProgressIndicator(
-                                    color: colorScheme.primary,
-                                  )
-                                : IconButton(
-                                    onPressed: _togglePlayPause,
-                                    icon: Icon(
-                                      _isPlaying
-                                          ? Icons.pause_circle_filled_rounded
-                                          : Icons.play_circle_filled_rounded,
-                                      size: 64,
-                                      color: colorScheme.primary,
-                                    ),
-                                  ),
-                          ),
-
-                          // Progress Bar
-                          if (_duration.inSeconds > 0) ...[
-                            const SizedBox(height: 8),
-                            SliderTheme(
-                              data: const SliderThemeData(
-                                trackHeight: 4,
-                                thumbShape: RoundSliderThumbShape(
-                                  enabledThumbRadius: 6,
-                                ),
-                                overlayShape: RoundSliderOverlayShape(
-                                  overlayRadius: 14,
-                                ),
-                              ),
-                              child: Slider(
-                                value: _position.inSeconds.toDouble(),
-                                max: _duration.inSeconds.toDouble(),
-                                onChanged: (value) async {
-                                  await _audioPlayer.seek(
-                                    Duration(seconds: value.toInt()),
-                                  );
-                                },
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    _formatDuration(_position),
-                                    style: textTheme.bodySmall?.copyWith(
-                                      color: colorScheme.onPrimaryContainer,
-                                    ),
-                                  ),
-                                  Text(
-                                    _formatDuration(_duration),
-                                    style: textTheme.bodySmall?.copyWith(
-                                      color: colorScheme.onPrimaryContainer,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                  ] else ...[
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: colorScheme.outline.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.music_off_rounded,
-                            size: 48,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Audio Preview Not Available',
-                            style: textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'This track doesn\'t have a preview in your region. You can listen to the full song on Spotify using the QR code below!',
-                            textAlign: TextAlign.center,
-                            style: textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          FilledButton.tonalIcon(
-                            onPressed: _openInSpotify,
-                            icon: const Icon(Icons.open_in_new_rounded),
-                            label: const Text('Listen on Spotify'),
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                  ],
 
                   // QR Code Section
                   if (widget.track.spotifyUrl != null) ...[
@@ -596,7 +363,8 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
             ),
           ),
         ],
-      ),
+        ),
+        ),
       ),
     );
   }
@@ -628,12 +396,5 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
         ],
       ),
     );
-  }
-
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final minutes = twoDigits(duration.inMinutes.remainder(60));
-    final seconds = twoDigits(duration.inSeconds.remainder(60));
-    return '$minutes:$seconds';
   }
 }
