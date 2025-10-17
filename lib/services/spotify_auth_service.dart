@@ -63,19 +63,48 @@ class SpotifyAuthService extends ChangeNotifier {
       final currentUrl = html.window.location.href;
       _log('🔐 [AUTH] Checking current URL for auth callback: $currentUrl');
       
-      // Check if we have an access token in the URL fragment
-      final fragment = html.window.location.hash;
-      if (fragment.isNotEmpty && fragment.contains('access_token')) {
-        _log('🔐 [AUTH] Found access token in URL fragment!');
+      // Check for error in URL
+      final uri = Uri.parse(currentUrl);
+      final error = uri.queryParameters['error'];
+      if (error != null) {
+        _logError('❌ [AUTH] OAuth error: $error');
+        await _storage.delete(key: 'spotify_auth_in_progress');
+        return;
+      }
+      
+      // Check if we have an authorization code in the URL
+      final code = uri.queryParameters['code'];
+      if (code != null && code.isNotEmpty) {
+        _log('🔐 [AUTH] Found authorization code in URL!');
         
         // Check if auth was in progress
         final authInProgress = await _storage.read(key: 'spotify_auth_in_progress');
         if (authInProgress == 'true') {
-          _log('🔐 [AUTH] Processing OAuth callback...');
+          _log('🔐 [AUTH] Processing OAuth callback with authorization code...');
           await _storage.delete(key: 'spotify_auth_in_progress');
           
-          // Process the callback
-          await _processAuthCallback(currentUrl);
+          // Get the stored code verifier
+          final codeVerifier = await _storage.read(key: 'spotify_code_verifier');
+          if (codeVerifier == null) {
+            _logError('❌ [AUTH] Code verifier not found!');
+            return;
+          }
+          
+          _log('🔐 [AUTH] Retrieved code verifier from storage');
+          
+          // Exchange code for tokens
+          await _exchangeCodeForTokens(code, codeVerifier);
+          await _storage.delete(key: 'spotify_code_verifier');
+          
+          // Fetch user profile
+          await _fetchUserProfile();
+          
+          _isAuthenticated = true;
+          _isLoading = false;
+          notifyListeners();
+          
+          _log('✅ [AUTH] Login successful!');
+          _log('✅ [AUTH] User: ${_userProfile?['display_name'] ?? 'Unknown'}');
           
           // Clean the URL
           html.window.history.replaceState(null, '', html.window.location.pathname);
@@ -83,6 +112,8 @@ class SpotifyAuthService extends ChangeNotifier {
       }
     } catch (e) {
       _logError('❌ [AUTH] Error checking for auth callback: $e');
+      await _storage.delete(key: 'spotify_auth_in_progress');
+      await _storage.delete(key: 'spotify_code_verifier');
     }
   }
   
@@ -111,7 +142,7 @@ class SpotifyAuthService extends ChangeNotifier {
     };
   }
   
-  // Login with Spotify OAuth - Using Implicit Grant Flow for web
+  // Login with Spotify OAuth - Using Authorization Code Flow with PKCE for web
   Future<bool> login() async {
     // Always log to browser console for web debugging
     _log('🔐 [AUTH] Starting Spotify login flow...');
@@ -135,12 +166,21 @@ class SpotifyAuthService extends ChangeNotifier {
       
       _log('🔐 [AUTH] Scopes requested: $scopes');
       
-      // Use Implicit Grant Flow (response_type=token) for web without backend
+      // Generate PKCE challenge
+      final pkce = _generatePKCE();
+      _log('🔐 [AUTH] Generated PKCE challenge');
+      
+      // Store code verifier for later use
+      await _storage.write(key: 'spotify_code_verifier', value: pkce['codeVerifier']);
+      
+      // Use Authorization Code Flow with PKCE (more secure than implicit flow)
       final authUrl = Uri.https('accounts.spotify.com', '/authorize', {
         'client_id': clientId,
-        'response_type': 'token',  // Implicit flow - returns token directly
+        'response_type': 'code',  // Authorization code flow
         'redirect_uri': redirectUri,
         'scope': scopes,
+        'code_challenge_method': 'S256',
+        'code_challenge': pkce['codeChallenge']!,
         'show_dialog': 'false',
       });
       
@@ -149,7 +189,7 @@ class SpotifyAuthService extends ChangeNotifier {
       
       // For web, use direct window navigation instead of FlutterWebAuth2
       if (kIsWeb) {
-        _log('🔐 [AUTH] Using web window navigation...');
+        _log('🔐 [AUTH] Using web window navigation with PKCE...');
         
         // Store state that we're authenticating
         await _storage.write(key: 'spotify_auth_in_progress', value: 'true');
@@ -293,6 +333,8 @@ class SpotifyAuthService extends ChangeNotifier {
   
   // Exchange authorization code for access and refresh tokens
   Future<void> _exchangeCodeForTokens(String code, String codeVerifier) async {
+    _log('🔐 [AUTH] Exchanging authorization code for tokens...');
+    
     final response = await http.post(
       Uri.parse('https://accounts.spotify.com/api/token'),
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -306,28 +348,76 @@ class SpotifyAuthService extends ChangeNotifier {
     );
     
     if (response.statusCode == 200) {
+      _log('✅ [AUTH] Token exchange successful');
       final data = jsonDecode(response.body);
       _accessToken = data['access_token'];
       _refreshToken = data['refresh_token'];
       _tokenExpiry = DateTime.now().add(Duration(seconds: data['expires_in']));
       
+      _log('🔐 [AUTH] Storing tokens to secure storage...');
+      
       // Store tokens securely
       await _storage.write(key: 'spotify_access_token', value: _accessToken);
       await _storage.write(key: 'spotify_refresh_token', value: _refreshToken);
       await _storage.write(key: 'spotify_token_expiry', value: _tokenExpiry!.toIso8601String());
+      
+      _log('✅ [AUTH] Tokens stored successfully');
     } else {
+      _logError('❌ [AUTH] Token exchange failed: ${response.statusCode}');
+      _logError('❌ [AUTH] Response: ${response.body}');
       throw Exception('Token exchange failed: ${response.body}');
     }
   }
   
-  // Refresh access token (for Implicit Flow, user needs to re-authenticate)
+  // Refresh access token using refresh token
   Future<void> refreshAccessToken() async {
-    // Implicit Grant Flow doesn't provide refresh tokens
-    // User needs to login again when token expires
-    _isAuthenticated = false;
-    _accessToken = null;
-    notifyListeners();
-    throw Exception('Token expired. Please login again.');
+    if (_refreshToken == null) {
+      _log('⚠️ [AUTH] No refresh token available, need to re-authenticate');
+      _isAuthenticated = false;
+      _accessToken = null;
+      notifyListeners();
+      throw Exception('Token expired. Please login again.');
+    }
+    
+    _log('🔐 [AUTH] Refreshing access token...');
+    
+    try {
+      final response = await http.post(
+        Uri.parse('https://accounts.spotify.com/api/token'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'grant_type': 'refresh_token',
+          'refresh_token': _refreshToken!,
+          'client_id': clientId,
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _accessToken = data['access_token'];
+        _tokenExpiry = DateTime.now().add(Duration(seconds: data['expires_in']));
+        
+        // Update refresh token if provided
+        if (data['refresh_token'] != null) {
+          _refreshToken = data['refresh_token'];
+          await _storage.write(key: 'spotify_refresh_token', value: _refreshToken);
+        }
+        
+        await _storage.write(key: 'spotify_access_token', value: _accessToken);
+        await _storage.write(key: 'spotify_token_expiry', value: _tokenExpiry!.toIso8601String());
+        
+        _log('✅ [AUTH] Token refreshed successfully');
+      } else {
+        _logError('❌ [AUTH] Token refresh failed: ${response.statusCode}');
+        throw Exception('Token refresh failed');
+      }
+    } catch (e) {
+      _logError('❌ [AUTH] Error refreshing token: $e');
+      _isAuthenticated = false;
+      _accessToken = null;
+      notifyListeners();
+      rethrow;
+    }
   }
   
   // Check if token needs refresh
@@ -335,11 +425,23 @@ class SpotifyAuthService extends ChangeNotifier {
     if (_accessToken == null) return false;
     
     if (_tokenExpiry != null && DateTime.now().isAfter(_tokenExpiry!)) {
-      // Token expired, user needs to re-login
-      _isAuthenticated = false;
-      _accessToken = null;
-      notifyListeners();
-      return false;
+      // Token expired, try to refresh
+      _log('⚠️ [AUTH] Token expired, attempting refresh...');
+      
+      if (_refreshToken != null) {
+        try {
+          await refreshAccessToken();
+          return true;
+        } catch (e) {
+          _logError('❌ [AUTH] Token refresh failed, user needs to re-login');
+          return false;
+        }
+      } else {
+        _isAuthenticated = false;
+        _accessToken = null;
+        notifyListeners();
+        return false;
+      }
     }
     
     return true;
