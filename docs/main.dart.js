@@ -29868,7 +29868,7 @@ a4T(a,b,c){return A.aUx(a,b,c)},
 aUx(a,b,c){var s=0,r=A.y(t.a),q,p=2,o=[],n,m,l,k,j,i,h,g
 var $async$a4T=A.z(function(d,e){if(d===1){o.push(e)
 s=p}while(true)switch(s){case 0:p=4
-k=A.dH("https://backendproxy-edfpf6fnh-byflowt-prod-tests-projects.vercel.app/api/spotify-token",0,null)
+k=A.dH("https://backendproxy-h83op6ls4-byflowt-prod-tests-projects.vercel.app/api/spotify-token",0,null)
 j=t.N
 i=A.aa(["Content-Type","application/json"],j,j)
 s=7
