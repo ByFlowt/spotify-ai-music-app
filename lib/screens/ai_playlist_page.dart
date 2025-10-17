@@ -585,7 +585,9 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
               children: [
                 const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 12),
-                Text('🎉 ${aiService.generatedTracks.length} tracks added to your playlist!'),
+                Expanded(
+                  child: Text('🎉 ${aiService.generatedTracks.length} tracks saved to AI Playlist folder! Go to "My Playlist" tab to export to Spotify.'),
+                ),
               ],
             ),
             backgroundColor: Colors.green,
@@ -593,7 +595,7 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 5),
           ),
         );
       }

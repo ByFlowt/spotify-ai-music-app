@@ -569,5 +569,119 @@ class SpotifyService extends ChangeNotifier {
     
     return sortedGenres.take(10).map((e) => e.key).toList();
   }
+
+  // Get current user's profile
+  Future<Map<String, dynamic>?> getCurrentUserProfile({
+    required String userAccessToken,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://api.spotify.com/v1/me'),
+        headers: {
+          'Authorization': 'Bearer $userAccessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        if (kDebugMode) {
+          print('Error getting user profile: ${response.statusCode}');
+        }
+        return null;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting user profile: $e');
+      }
+      return null;
+    }
+  }
+
+  // Create a new playlist on user's Spotify account
+  Future<String?> createPlaylist({
+    required String userAccessToken,
+    required String userId,
+    required String playlistName,
+    String description = '',
+    bool isPublic = false,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://api.spotify.com/v1/users/$userId/playlists'),
+        headers: {
+          'Authorization': 'Bearer $userAccessToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'name': playlistName,
+          'description': description,
+          'public': isPublic,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return data['id']; // Return playlist ID
+      } else {
+        if (kDebugMode) {
+          print('Error creating playlist: ${response.statusCode} - ${response.body}');
+        }
+        return null;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error creating playlist: $e');
+      }
+      return null;
+    }
+  }
+
+  // Add tracks to a Spotify playlist
+  Future<bool> addTracksToPlaylist({
+    required String userAccessToken,
+    required String playlistId,
+    required List<String> trackUris,
+  }) async {
+    try {
+      // Spotify API allows max 100 tracks per request
+      final batches = <List<String>>[];
+      for (var i = 0; i < trackUris.length; i += 100) {
+        batches.add(
+          trackUris.sublist(
+            i,
+            i + 100 > trackUris.length ? trackUris.length : i + 100,
+          ),
+        );
+      }
+
+      for (var batch in batches) {
+        final response = await http.post(
+          Uri.parse('https://api.spotify.com/v1/playlists/$playlistId/tracks'),
+          headers: {
+            'Authorization': 'Bearer $userAccessToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'uris': batch,
+          }),
+        );
+
+        if (response.statusCode != 200 && response.statusCode != 201) {
+          if (kDebugMode) {
+            print('Error adding tracks to playlist: ${response.statusCode} - ${response.body}');
+          }
+          return false;
+        }
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error adding tracks to playlist: $e');
+      }
+      return false;
+    }
+  }
 }
 

@@ -488,11 +488,9 @@ class AIPlaylistService extends ChangeNotifier {
 
   // Save generated playlist to user's library
   Future<void> saveGeneratedPlaylist() async {
-    _log('💾 Saving ${_generatedTracks.length} tracks to main playlist...');
-    for (var track in _generatedTracks) {
-      await _playlistManager.addTrack(track);
-    }
-    _log('✅ All tracks saved to playlist successfully!');
+    _log('💾 Saving ${_generatedTracks.length} tracks to AI playlist folder...');
+    await _playlistManager.addTracksToAI(_generatedTracks);
+    _log('✅ All tracks saved to AI playlist folder successfully!');
   }
 
   // Quick actions
