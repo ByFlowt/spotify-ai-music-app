@@ -42,13 +42,31 @@ class _SongSearchPageState extends State<SongSearchPage> {
     setState(() => _loadingTrending = true);
     try {
       final spotifyService = context.read<SpotifyService>();
-      // Load trending tracks (high popularity)
-      final trendingResults = await spotifyService.searchTracks('trending');
-      trendingResults.sort((a, b) => (b.popularity).compareTo(a.popularity));
+      // Get real trending tracks using Spotify's trending/popular searches
+      // Search for current popular songs across different genres
+      final queries = ['top hits 2024', 'viral hits', 'trending now'];
+      List<Track> allTracks = [];
+      
+      for (final query in queries) {
+        final results = await spotifyService.searchTracks(query);
+        allTracks.addAll(results);
+      }
+      
+      // Remove duplicates and sort by popularity
+      final uniqueTracks = <String, Track>{};
+      for (final track in allTracks) {
+        if (!uniqueTracks.containsKey(track.id) || 
+            track.popularity > (uniqueTracks[track.id]?.popularity ?? 0)) {
+          uniqueTracks[track.id] = track;
+        }
+      }
+      
+      final sortedTracks = uniqueTracks.values.toList()
+        ..sort((a, b) => b.popularity.compareTo(a.popularity));
 
       if (mounted) {
         setState(() {
-          _trendingTracks = trendingResults.take(5).toList();
+          _trendingTracks = sortedTracks.take(5).toList();
           _loadingTrending = false;
         });
       }
@@ -512,23 +530,6 @@ class _SongSearchPageState extends State<SongSearchPage> {
               colorScheme.secondary,
               onTap: () => _showShazamDialog(context),
             ),
-            const SizedBox(height: 12),
-            _buildFeatureCard(
-              context,
-              Icons.favorite_rounded,
-              'Save Favorites',
-              'Add songs to your playlist for later',
-              colorScheme.tertiary,
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                        'Use the heart icon on any result to save it to My Playlist.'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-            ),
             const SizedBox(height: 40),
 
             // Trending Section
@@ -885,29 +886,40 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
             final songData = result['result'];
             final title = songData['title'] ?? 'Unknown';
             final artist = songData['artist'] ?? 'Unknown';
-            final album = songData['album'];
 
-            // Create a Track object and add to identified songs
-            final identifiedTrack = Track(
-              id: songData['spotify_id'] ??
-                  '${title}_${artist}'.replaceAll(' ', '_'),
-              name: title,
-              artistName: artist,
-              albumName: album,
-              imageUrl: songData['spotify']?['image'],
-              spotifyUrl: songData['spotify_id'] != null
-                  ? 'https://open.spotify.com/track/${songData['spotify_id']}'
-                  : null,
-              previewUrl: songData['preview_url'],
-              popularity: 75,
-              durationMs: (songData['duration'] ?? 0) * 1000,
-            );
+            // Search Spotify to get the real track data
+            final spotifyService = context.read<SpotifyService>();
+            final searchQuery = '$title $artist';
+            final spotifyResults = await spotifyService.searchTracks(searchQuery);
+            
+            Track? identifiedTrack;
+            
+            if (spotifyResults.isNotEmpty) {
+              // Use the first result from Spotify (most relevant)
+              identifiedTrack = spotifyResults.first;
+            } else {
+              // Fallback: Create track from AudD data if Spotify search fails
+              identifiedTrack = Track(
+                id: songData['spotify_id'] ??
+                    '${title}_${artist}'.replaceAll(' ', '_'),
+                name: title,
+                artistName: artist,
+                albumName: songData['album'],
+                imageUrl: songData['spotify']?['image'],
+                spotifyUrl: songData['spotify_id'] != null
+                    ? 'https://open.spotify.com/track/${songData['spotify_id']}'
+                    : null,
+                previewUrl: songData['preview_url'],
+                popularity: 75,
+                durationMs: (songData['duration'] ?? 0) * 1000,
+              );
+            }
 
             // Add to identified songs playlist
             final playlistManager = context.read<PlaylistManager>();
             await playlistManager.addIdentifiedSong(identifiedTrack);
 
-            _showSongIdentified(title, artist);
+            _showSongIdentified(identifiedTrack.name, identifiedTrack.artistName);
           } else {
             _showError(
                 'Could not identify the song. Please try again or search manually.');

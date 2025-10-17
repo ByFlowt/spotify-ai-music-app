@@ -54,10 +54,12 @@ class _SearchPageState extends State<SearchPage> {
 
     final spotifyService = context.read<SpotifyService>();
     
-    // Add genre filter to search query if not 'all'
+    // If genre filter is active, search for artists within that genre
+    // Use Spotify's genre filter syntax properly
     String searchQuery = query;
     if (_selectedGenre != 'all') {
-      searchQuery = '$query genre:$_selectedGenre';
+      // Search artists in a specific genre
+      searchQuery = 'genre:"$_selectedGenre" $query';
     }
     
     final results = await spotifyService.searchArtists(searchQuery);
@@ -72,9 +74,8 @@ class _SearchPageState extends State<SearchPage> {
     setState(() {
       _selectedGenre = genre;
     });
-    if (_searchController.text.isNotEmpty) {
-      _performSearch(_searchController.text);
-    }
+    // Don't auto-search, just update the filter
+    // User must manually search or click search button
   }
 
   @override
@@ -906,9 +907,8 @@ class _SearchPageState extends State<SearchPage> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
+          // Just set the genre filter, don't auto-search
           _applyGenreFilter(genre.toLowerCase());
-          _searchController.text = genre;
-          _performSearch(genre);
         },
         borderRadius: BorderRadius.circular(20),
         child: Container(
