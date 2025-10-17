@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 // Helper function for web console logging
 void _log(String message) {
@@ -25,7 +26,6 @@ void _logError(String message) {
 }
 
 class SpotifyAuthService extends ChangeNotifier {
-  static const String clientId = 'ce1797970d2d4ec8852fa68a54fe8a8f';
   // GitHub Pages URL - must match Spotify Dashboard redirect URI
   static const String redirectUri = 'https://byflowt.github.io/spotify-ai-music-app/';
   
@@ -145,6 +145,15 @@ class SpotifyAuthService extends ChangeNotifier {
   // Login with Spotify OAuth - Using Authorization Code Flow with PKCE for web
   Future<bool> login() async {
     // Always log to browser console for web debugging
+    final clientId = ApiConfig.spotifyClientId;
+    
+    if (clientId.isEmpty) {
+      _error = 'Spotify Client ID not configured. Please set SPOTIFY_CLIENT_ID in .env';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+    
     _log('🔐 [AUTH] Starting Spotify login flow...');
     _log('🔐 [AUTH] Client ID: $clientId');
     _log('🔐 [AUTH] Redirect URI: $redirectUri');
@@ -335,6 +344,9 @@ class SpotifyAuthService extends ChangeNotifier {
   Future<void> _exchangeCodeForTokens(String code, String codeVerifier) async {
     _log('🔐 [AUTH] Exchanging authorization code for tokens...');
     
+    final clientId = ApiConfig.spotifyClientId;
+    final clientSecret = ApiConfig.spotifyClientSecret;
+    
     final response = await http.post(
       Uri.parse('https://accounts.spotify.com/api/token'),
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -343,6 +355,7 @@ class SpotifyAuthService extends ChangeNotifier {
         'code': code,
         'redirect_uri': redirectUri,
         'client_id': clientId,
+        'client_secret': clientSecret,
         'code_verifier': codeVerifier,
       },
     );
@@ -382,6 +395,9 @@ class SpotifyAuthService extends ChangeNotifier {
     _log('🔐 [AUTH] Refreshing access token...');
     
     try {
+      final clientId = ApiConfig.spotifyClientId;
+      final clientSecret = ApiConfig.spotifyClientSecret;
+      
       final response = await http.post(
         Uri.parse('https://accounts.spotify.com/api/token'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -389,6 +405,7 @@ class SpotifyAuthService extends ChangeNotifier {
           'grant_type': 'refresh_token',
           'refresh_token': _refreshToken!,
           'client_id': clientId,
+          'client_secret': clientSecret,
         },
       );
       

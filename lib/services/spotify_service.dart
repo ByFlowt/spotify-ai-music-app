@@ -4,9 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/artist_model.dart';
 import '../models/track_model.dart';
+import '../config/api_config.dart';
 
 class SpotifyService extends ChangeNotifier {
   String? _accessToken;
+  String? _userAccessToken;
+  String? _userId;
   bool _isLoading = false;
   String? _error;
   
@@ -18,20 +21,22 @@ class SpotifyService extends ChangeNotifier {
   String? get error => _error;
   List<Artist> get lastSearchedArtists => _lastSearchedArtists;
   List<Track> get lastSearchedTracks => _lastSearchedTracks;
+  String? get userId => _userId;
 
-  // Note: In production, store these securely and use a backend proxy
-  // For this demo, you'll need to get your own credentials from Spotify Developer Dashboard
-  // Visit: https://developer.spotify.com/dashboard
-  static const String clientId = 'ce1797970d2d4ec8852fa68a54fe8a8f';
-  static const String clientSecret = '2eb0d963befb41f0998ddd703c8a8b7a';
-
-  // Get access token using Client Credentials Flow
+  /// Get access token using Client Credentials Flow
   Future<void> _getAccessToken() async {
     if (kIsWeb) {
       html.window.console.log('🎵 [SPOTIFY] Getting access token for guest mode...');
     }
     
     try {
+      final clientId = ApiConfig.spotifyClientId;
+      final clientSecret = ApiConfig.spotifyClientSecret;
+      
+      if (clientId.isEmpty || clientSecret.isEmpty) {
+        throw Exception('Spotify API keys not configured. Please set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env');
+      }
+      
       final credentials = base64Encode(utf8.encode('$clientId:$clientSecret'));
       
       if (kIsWeb) {
@@ -78,7 +83,19 @@ class SpotifyService extends ChangeNotifier {
     }
   }
 
-  // Search for artists
+  /// Set user ID (called after login)
+  void setUserId(String userId) {
+    _userId = userId;
+    notifyListeners();
+  }
+
+  /// Set user access token (called after login)
+  void setUserAccessToken(String token) {
+    _userAccessToken = token;
+    notifyListeners();
+  }
+
+  /// Search for artists
   Future<List<Artist>> searchArtists(String query) async {
     if (query.trim().isEmpty) return [];
 

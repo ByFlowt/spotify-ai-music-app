@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import '../models/track_model.dart';
 import '../services/playlist_manager.dart';
+import '../services/spotify_service.dart';
+import '../services/spotify_auth_service.dart';
 import 'track_detail_page.dart';
 
 class MyPlaylistPage extends StatefulWidget {
@@ -186,7 +189,7 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
       ),
       child: Column(
         children: [
-          // Folder Header
+          // Folder Header with Export Button
           InkWell(
             onTap: () => onExpandChanged(!isExpanded),
             child: Padding(
@@ -227,6 +230,12 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
                       ],
                     ),
                   ),
+                  if (tracks.isNotEmpty)
+                    IconButton(
+                      onPressed: () => _exportToSpotify(context, title, tracks),
+                      icon: const Icon(Icons.upload_rounded),
+                      tooltip: 'Export to Spotify',
+                    ),
                   if (onClear != null)
                     IconButton(
                       onPressed: onClear,
@@ -543,4 +552,115 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
       ),
     );
   }
+
+  Future<void> _exportToSpotify(BuildContext context, String playlistName, List<dynamic> tracks) async {
+    final authService = context.read<SpotifyAuthService>();
+    final spotifyService = context.read<SpotifyService>();
+    
+    if (!authService.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please login with Spotify first to export playlists'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            const Text('Creating Spotify playlist...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Get user profile
+      final userProfile = authService.userProfile;
+      if (userProfile == null) {
+        Navigator.pop(context);
+        throw Exception('User profile not available');
+      }
+
+      final userId = userProfile['id'] as String;
+      final accessToken = authService.accessToken!;
+
+      // Convert Track objects to Spotify URIs
+      final trackUris = tracks
+          .map((track) {
+            if (track is Track) {
+              return 'spotify:track:${track.id}';
+            }
+            return null;
+          })
+          .whereType<String>()
+          .toList();
+
+      if (trackUris.isEmpty) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No valid tracks to export'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      // Create playlist
+      final playlistId = await spotifyService.createPlaylist(
+        userAccessToken: accessToken,
+        userId: userId,
+        playlistName: playlistName,
+        description: 'Exported from Spotify AI Music App',
+        isPublic: false,
+      );
+
+      if (playlistId == null) {
+        Navigator.pop(context);
+        throw Exception('Failed to create playlist');
+      }
+
+      // Add tracks to playlist
+      final success = await spotifyService.addTracksToPlaylist(
+        userAccessToken: accessToken,
+        playlistId: playlistId,
+        trackUris: trackUris,
+      );
+
+      Navigator.pop(context);
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Playlist "$playlistName" exported to Spotify!'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        throw Exception('Failed to add tracks to playlist');
+      }
+    } catch (e) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Export failed: $e'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 }
+
