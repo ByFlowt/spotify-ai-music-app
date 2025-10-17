@@ -33,6 +33,17 @@ class SpotifyService extends ChangeNotifier {
       final clientId = ApiConfig.spotifyClientId;
       final clientSecret = ApiConfig.spotifyClientSecret;
       
+      // On web, if client secret is not available, skip guest mode
+      // User must authenticate via OAuth instead
+      if (kIsWeb && clientSecret.isEmpty) {
+        if (kIsWeb) {
+          html.window.console.log('⚠️ [SPOTIFY] Client credentials not available on web - user authentication required');
+        }
+        _error = 'Please login with Spotify to use this feature';
+        notifyListeners();
+        return;
+      }
+      
       if (clientId.isEmpty || clientSecret.isEmpty) {
         throw Exception('Spotify API keys not configured. Please set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env');
       }
