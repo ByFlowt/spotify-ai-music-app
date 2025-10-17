@@ -218,12 +218,20 @@ class AIPlaylistService extends ChangeNotifier {
           final seedTracks = userTopTracks.take(2).map((t) => t.id).toList();
           final seedArtists = userTopArtists.take(2).map((a) => a.id).toList();
           
-          // Get genres from top artists
-          final topGenres = userTopArtists
+          // Get genres from top artists and map to valid Spotify genres
+          final artistGenres = userTopArtists
               .expand((artist) => artist.genres)
               .toSet()
+              .toList();
+          
+          final topGenres = _mapToValidSpotifyGenres(artistGenres)
               .take(2)
               .toList();
+          
+          if (kDebugMode) {
+            print('Artist genres: $artistGenres');
+            print('Mapped to valid genres: $topGenres');
+          }
           
           return {
             'genres': topGenres.isNotEmpty ? topGenres : _getDefaultGenres(),
@@ -349,6 +357,83 @@ class AIPlaylistService extends ChangeNotifier {
       mood: 'energetic',
       includeNewDiscoveries: false,
     );
+  }
+
+  // Map artist genres to valid Spotify recommendation genres
+  List<String> _mapToValidSpotifyGenres(List<String> artistGenres) {
+    // Valid Spotify genre seeds (commonly used ones)
+    const validGenres = {
+      'pop', 'rock', 'hip-hop', 'edm', 'electronic', 'dance', 'house',
+      'techno', 'trance', 'dubstep', 'drum-and-bass', 'indie', 'alternative',
+      'metal', 'punk', 'jazz', 'classical', 'r-n-b', 'soul', 'funk',
+      'blues', 'country', 'folk', 'reggae', 'latin', 'world-music',
+      'ambient', 'chill', 'acoustic', 'piano', 'guitar', 'vocal',
+      'party', 'happy', 'sad', 'energetic', 'relaxed', 'sleep'
+    };
+    
+    // Genre mapping for common mismatches
+    const genreMapping = {
+      'frenchcore': 'hardcore',
+      'hardstyle': 'hard-rock',
+      'hardcore': 'hard-rock',
+      'speedcore': 'hardcore',
+      'uk hardcore': 'hardcore',
+      'gabber': 'hardcore',
+      'uptempo': 'edm',
+      'rawstyle': 'hard-rock',
+      'industrial hardcore': 'industrial',
+      'terror': 'hard-rock',
+      'mainstream hardcore': 'hardcore',
+    };
+    
+    final mapped = <String>[];
+    
+    for (final genre in artistGenres) {
+      final lowerGenre = genre.toLowerCase();
+      
+      // Check if it's already a valid genre
+      if (validGenres.contains(lowerGenre)) {
+        mapped.add(lowerGenre);
+        continue;
+      }
+      
+      // Check if we have a mapping
+      if (genreMapping.containsKey(lowerGenre)) {
+        final mappedGenre = genreMapping[lowerGenre]!;
+        if (!mapped.contains(mappedGenre)) {
+          mapped.add(mappedGenre);
+        }
+        continue;
+      }
+      
+      // Try to find partial matches
+      for (final validGenre in validGenres) {
+        if (lowerGenre.contains(validGenre) || validGenre.contains(lowerGenre)) {
+          if (!mapped.contains(validGenre)) {
+            mapped.add(validGenre);
+            break;
+          }
+        }
+      }
+    }
+    
+    // If no matches found, return some safe defaults based on energy
+    if (mapped.isEmpty) {
+      if (artistGenres.any((g) => 
+          g.toLowerCase().contains('hard') || 
+          g.toLowerCase().contains('core') ||
+          g.toLowerCase().contains('metal'))) {
+        mapped.addAll(['hard-rock', 'metal']);
+      } else if (artistGenres.any((g) => 
+          g.toLowerCase().contains('electronic') || 
+          g.toLowerCase().contains('edm'))) {
+        mapped.addAll(['edm', 'electronic']);
+      } else {
+        mapped.addAll(['pop', 'rock']);
+      }
+    }
+    
+    return mapped;
   }
 
   Future<List<Track>> generateChillPlaylist() async {
