@@ -87688,7 +87688,7 @@ return s},
 $S:540}
 A.ada.prototype={
 $1(a){var s=new A.jV(),r=$.aLg()
-s.a=new A.a6O(A.aPA("gemini-2.0-flash-exp"),B.MT,new A.a6N(2048,0.8,0.95,40),new A.a80("AIzaSyDaKqVBlnGR6UXq5XQjxo7mJDfgVZ9t0NU",null),r)
+s.a=new A.a6O(A.aPA("gemini-2.5-flash"),B.MT,new A.a6N(2048,0.8,0.95,40),new A.a80("AIzaSyDaKqVBlnGR6UXq5XQjxo7mJDfgVZ9t0NU",null),r)
 return s},
 $S:541}
 A.adb.prototype={
