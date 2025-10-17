@@ -310,7 +310,7 @@ class _LoginPageState extends State<LoginPage>
                                         '1. Go to developer.spotify.com/dashboard\n'
                                         '2. Click your app → Edit Settings\n'
                                         '3. Add Redirect URI:\n'
-                                        '   http://localhost:8888/callback\n'
+                                        '   https://byflowt.github.io/spotify-ai-music-app/\n'
                                         '4. Click Save and try again',
                                         style: TextStyle(
                                           color: colorScheme.error,

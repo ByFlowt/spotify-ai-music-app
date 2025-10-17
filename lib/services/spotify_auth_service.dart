@@ -8,9 +8,8 @@ import 'package:http/http.dart' as http;
 
 class SpotifyAuthService extends ChangeNotifier {
   static const String clientId = 'ce1797970d2d4ec8852fa68a54fe8a8f';
-  // Spotify only allows this specific HTTP localhost URL for testing
-  // For production, deploy to HTTPS hosting (Vercel, Netlify, etc)
-  static const String redirectUri = 'http://localhost:8888/callback';
+  // GitHub Pages URL - must match Spotify Dashboard redirect URI
+  static const String redirectUri = 'https://byflowt.github.io/spotify-ai-music-app/';
   
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   
