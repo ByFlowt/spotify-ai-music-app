@@ -113,6 +113,30 @@ After login:
 2. Monitor Vercel logs for any errors
 3. Consider setting up custom domain for cleaner URLs
 
+## Future Deployments
+
+### Quick Deploy Script (Recommended)
+```powershell
+.\deploy-github-pages.ps1
+```
+
+### Manual Deploy
+```powershell
+# Build with correct base-href for GitHub Pages
+flutter build web --release --base-href /spotify-ai-music-app/
+
+# Copy to docs folder
+Remove-Item -Recurse -Force docs
+Copy-Item -Recurse build\web docs
+
+# Deploy to GitHub
+git add .
+git commit -m "Deploy: Update GitHub Pages"
+git push
+```
+
+**IMPORTANT:** Always use `--base-href /spotify-ai-music-app/` when building for GitHub Pages!
+
 ---
 
 **Status:** ✅ FULLY FUNCTIONAL  
