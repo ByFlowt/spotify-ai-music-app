@@ -90402,7 +90402,7 @@ return s},
 $S:534}
 A.ab0.prototype={
 $1(a){var s=new A.jK(),r=$.aKg()
-s.a=new A.a6Y(A.aOL("gemini-2.0-flash-exp"),B.Nb,new A.a6X(2048,0.8,0.95,40),new A.a8n("AIzaSyDaKqVBlnGR6UXq5XQjxo7mJDfgVZ9t0NU",null),r)
+s.a=new A.a6Y(A.aOL("gemini-2.5-flash"),B.Nb,new A.a6X(2048,0.8,0.95,40),new A.a8n("AIzaSyDaKqVBlnGR6UXq5XQjxo7mJDfgVZ9t0NU",null),r)
 return s},
 $S:535}
 A.ab1.prototype={

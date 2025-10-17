@@ -13,7 +13,7 @@ class GeminiAIService {
   
   GeminiAIService() {
     _model = GenerativeModel(
-      model: 'gemini-2.0-flash-exp',  // Use experimental free model with higher limits
+      model: 'gemini-2.5-flash',  // Latest Gemini 2.5 Flash model
       apiKey: apiKey,
       generationConfig: GenerationConfig(
         temperature: 0.8,  // Slightly less creative for more consistent results
