@@ -15,6 +15,27 @@ class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   List<Artist> _searchResults = [];
   bool _hasSearched = false;
+  String _selectedGenre = 'all';
+  
+  // Genre lists
+  final List<Map<String, dynamic>> _aiSuggestedGenres = [
+    {'name': 'Hardstyle', 'icon': Icons.flash_on, 'color': Color(0xFFFF6B35)},
+    {'name': 'EDM', 'icon': Icons.electric_bolt, 'color': Color(0xFF00D9FF)},
+    {'name': 'Techno', 'icon': Icons.graphic_eq, 'color': Color(0xFFB026FF)},
+  ];
+  
+  final List<Map<String, dynamic>> _allGenres = [
+    {'name': 'All', 'icon': Icons.grid_view_rounded, 'key': 'all'},
+    {'name': 'Pop', 'icon': Icons.stars_rounded, 'key': 'pop'},
+    {'name': 'Rock', 'icon': Icons.music_note_rounded, 'key': 'rock'},
+    {'name': 'Hip-Hop', 'icon': Icons.podcasts_rounded, 'key': 'hip-hop'},
+    {'name': 'Electronic', 'icon': Icons.electrical_services, 'key': 'electronic'},
+    {'name': 'Classical', 'icon': Icons.piano, 'key': 'classical'},
+    {'name': 'Jazz', 'icon': Icons.music_video, 'key': 'jazz'},
+    {'name': 'R&B', 'icon': Icons.nightlife, 'key': 'r&b'},
+    {'name': 'Country', 'icon': Icons.nature, 'key': 'country'},
+    {'name': 'Latin', 'icon': Icons.celebration, 'key': 'latin'},
+  ];
 
   @override
   void dispose() {
@@ -32,12 +53,28 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     final spotifyService = context.read<SpotifyService>();
-    final results = await spotifyService.searchArtists(query);
+    
+    // Add genre filter to search query if not 'all'
+    String searchQuery = query;
+    if (_selectedGenre != 'all') {
+      searchQuery = '$query genre:$_selectedGenre';
+    }
+    
+    final results = await spotifyService.searchArtists(searchQuery);
 
     setState(() {
       _searchResults = results;
       _hasSearched = true;
     });
+  }
+  
+  void _applyGenreFilter(String genre) {
+    setState(() {
+      _selectedGenre = genre;
+    });
+    if (_searchController.text.isNotEmpty) {
+      _performSearch(_searchController.text);
+    }
   }
 
   @override
@@ -164,6 +201,106 @@ class _SearchPageState extends State<SearchPage> {
                         setState(() {});
                       },
                       onSubmitted: _performSearch,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+                  
+                  // AI-Suggested Genres Section
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          colorScheme.primary.withOpacity(0.12),
+                          colorScheme.tertiary.withOpacity(0.08),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: colorScheme.primary.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.auto_awesome,
+                              size: 18,
+                              color: colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'AI Suggestions for You',
+                              style: textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: colorScheme.primary,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _aiSuggestedGenres.map((genre) {
+                            return _buildAISuggestionChip(
+                              genre['name'],
+                              genre['icon'],
+                              genre['color'],
+                              colorScheme,
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // All Genres Filter Section
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.filter_list_rounded,
+                        size: 16,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Filter by Genre',
+                        style: textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 40,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _allGenres.length,
+                      itemBuilder: (context, index) {
+                        final genre = _allGenres[index];
+                        final isSelected = _selectedGenre == genre['key'];
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _buildGenreFilterChip(
+                            genre['name'],
+                            genre['icon'],
+                            genre['key'],
+                            isSelected,
+                            colorScheme,
+                          ),
+                        );
+                      },
                     ),
                   ),
 
@@ -755,6 +892,114 @@ class _SearchPageState extends State<SearchPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAISuggestionChip(
+    String genre,
+    IconData icon,
+    Color color,
+    ColorScheme colorScheme,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          _applyGenreFilter(genre.toLowerCase());
+          _searchController.text = genre;
+          _performSearch(genre);
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                color.withOpacity(0.2),
+                color.withOpacity(0.1),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: color.withOpacity(0.4),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: color,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                genre,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenreFilterChip(
+    String label,
+    IconData icon,
+    String key,
+    bool isSelected,
+    ColorScheme colorScheme,
+  ) {
+    return FilterChip(
+      selected: isSelected,
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+      onSelected: (selected) {
+        _applyGenreFilter(key);
+      },
+      backgroundColor: colorScheme.surface,
+      selectedColor: colorScheme.primary,
+      checkmarkColor: colorScheme.onPrimary,
+      side: BorderSide(
+        color: isSelected 
+          ? colorScheme.primary 
+          : colorScheme.outlineVariant,
+        width: isSelected ? 2 : 1,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
       ),
     );
   }

@@ -437,20 +437,34 @@ class _MainNavigatorState extends State<MainNavigator> {
       body: Stack(
         children: [
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
+            duration: const Duration(milliseconds: 350),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
             transitionBuilder: (child, animation) {
+              // Material 3 Expressive shared axis transition
+              final offsetAnimation = Tween<Offset>(
+                begin: const Offset(0.05, 0.0),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              ));
+
               return FadeTransition(
-                opacity: animation,
+                opacity: CurvedAnimation(
+                  parent: animation,
+                  curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+                ),
                 child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.0, 0.1),
-                    end: Offset.zero,
-                  ).animate(animation),
+                  position: offsetAnimation,
                   child: child,
                 ),
               );
             },
-            child: pages[_currentIndex],
+            child: KeyedSubtree(
+              key: ValueKey<int>(_currentIndex),
+              child: pages[_currentIndex],
+            ),
           ),
           // Show guest mode banner if in guest mode
           if (widget.isGuest)

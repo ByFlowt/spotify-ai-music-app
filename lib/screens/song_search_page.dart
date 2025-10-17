@@ -829,8 +829,10 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
   late AnimationController _pulseController;
   WebAudioRecorder? _audioRecorder;
   bool _isRecording = false;
+  // ignore: unused_field
   bool _isProcessing = false;
   String _statusText = 'Tap to start listening...';
+  // ignore: unused_field
   String? _error;
 
   @override

@@ -754,6 +754,8 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
 
   Future<void> _generatePlaylist(
       AIPlaylistService aiService, String mood) async {
+    if (!mounted) return;
+    
     setState(() {
       _isGenerating = true;
       _generatingProgress = 0.0;
@@ -765,7 +767,11 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
     try {
       // Simulate progress updates (0% -> 30% during initial setup)
       await Future.delayed(const Duration(milliseconds: 200));
-      setState(() => _generatingProgress = 0.3);
+      if (mounted) {
+        setState(() {
+          _generatingProgress = 0.3;
+        });
+      }
 
       // Generate the playlist (30% -> 70% during generation)
       switch (mood) {
@@ -778,12 +784,21 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
         default:
           await aiService.generateSmartPlaylist(mood: mood);
       }
-      setState(() => _generatingProgress = 0.7);
+      
+      if (mounted) {
+        setState(() {
+          _generatingProgress = 0.7;
+        });
+      }
 
       // Save the generated tracks (70% -> 100% during saving)
       if (aiService.generatedTracks.isNotEmpty) {
         await aiService.saveGeneratedPlaylist();
-        setState(() => _generatingProgress = 1.0);
+        if (mounted) {
+          setState(() {
+            _generatingProgress = 1.0;
+          });
+        }
 
         // Brief pause to show 100% completion
         await Future.delayed(const Duration(milliseconds: 500));
