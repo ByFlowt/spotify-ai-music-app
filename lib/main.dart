@@ -160,9 +160,36 @@ class MyApp extends StatelessWidget {
         ),
         darkTheme: ThemeData(
           useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF1DB954),
-            brightness: Brightness.dark,
+          colorScheme: ColorScheme.dark(
+            primary: const Color(0xFF1ED760), // Vibrant Spotify green
+            onPrimary: const Color(0xFF000000),
+            primaryContainer: const Color(0xFF1DB954),
+            onPrimaryContainer: const Color(0xFFE8F5E9),
+            
+            secondary: const Color(0xFF535FDD), // Vibrant blue accent
+            onSecondary: const Color(0xFF000000),
+            secondaryContainer: const Color(0xFF3D47B0),
+            onSecondaryContainer: const Color(0xFFE3F2FD),
+            
+            tertiary: const Color(0xFFFF6E40), // Vibrant orange accent
+            onTertiary: const Color(0xFF000000),
+            
+            surface: const Color(0xFF121212), // Pure dark surface
+            onSurface: const Color(0xFFE3E3E3),
+            surfaceContainerHighest: const Color(0xFF1E1E1E),
+            surfaceContainer: const Color(0xFF181818),
+            surfaceContainerLow: const Color(0xFF0F0F0F),
+            
+            background: const Color(0xFF0A0E12), // Deep black background
+            onBackground: const Color(0xFFE3E3E3),
+            
+            error: const Color(0xFFFF5252),
+            onError: const Color(0xFF000000),
+            
+            outline: const Color(0xFF424242),
+            outlineVariant: const Color(0xFF2C2C2C),
+            shadow: const Color(0xFF000000),
+            scrim: const Color(0xFF000000),
           ),
           textTheme: GoogleFonts.spaceGroteskTextTheme(ThemeData.dark().textTheme).copyWith(
             displayLarge: GoogleFonts.spaceGrotesk(
@@ -194,24 +221,37 @@ class MyApp extends StatelessWidget {
           ),
           cardTheme: CardThemeData(
             elevation: 0,
+            color: const Color(0xFF181818), // Dark card background
+            shadowColor: Colors.black.withOpacity(0.3),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28),
+              side: BorderSide(
+                color: Colors.white.withOpacity(0.05),
+                width: 1,
+              ),
             ),
           ),
           chipTheme: ChipThemeData(
+            backgroundColor: const Color(0xFF1E1E1E),
+            selectedColor: const Color(0xFF1ED760).withOpacity(0.2),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
           ),
-          floatingActionButtonTheme: const FloatingActionButtonThemeData(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(24)),
+          floatingActionButtonTheme: FloatingActionButtonThemeData(
+            backgroundColor: const Color(0xFF1ED760),
+            foregroundColor: Colors.black,
+            elevation: 8,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(28)),
             ),
           ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
-              elevation: 3,
-              shadowColor: const Color(0xFF1DB954).withOpacity(0.4),
+              elevation: 6,
+              backgroundColor: const Color(0xFF1ED760),
+              foregroundColor: Colors.black,
+              shadowColor: const Color(0xFF1ED760).withOpacity(0.5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -220,16 +260,39 @@ class MyApp extends StatelessWidget {
           ),
           navigationBarTheme: NavigationBarThemeData(
             height: 80,
-            elevation: 3,
+            elevation: 0,
+            backgroundColor: const Color(0xFF0F0F0F),
+            indicatorColor: const Color(0xFF1ED760).withOpacity(0.15),
             indicatorShape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
+            labelTextStyle: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1ED760),
+                );
+              }
+              return const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF888888),
+              );
+            }),
           ),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF0A0E12),
+            elevation: 0,
+            scrolledUnderElevation: 0,
+          ),
+          scaffoldBackgroundColor: const Color(0xFF0A0E12),
+          dividerColor: Colors.white.withOpacity(0.08),
         ),
-            themeMode: themeService.themeMode,
-            home: const AuthWrapper(),
-          );
-        },
+        themeMode: themeService.themeMode,
+        home: const AuthWrapper(),
+      );
+    },
       ),
     );
   }

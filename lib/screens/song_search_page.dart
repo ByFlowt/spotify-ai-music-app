@@ -109,6 +109,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
           ],
         ),
       ),
+      floatingActionButton: _buildMicrophoneFAB(context, colorScheme),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
@@ -727,4 +729,219 @@ class _SongSearchPageState extends State<SongSearchPage> {
       ),
     );
   }
+
+  Widget _buildMicrophoneFAB(BuildContext context, ColorScheme colorScheme) {
+    return FloatingActionButton.extended(
+      onPressed: () => _showShazamDialog(context),
+      icon: const Icon(Icons.mic_rounded, size: 24),
+      label: const Text(
+        'Identify Song',
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+      ),
+      elevation: 8,
+      backgroundColor: colorScheme.primary,
+      foregroundColor: colorScheme.onPrimary,
+    );
+  }
+
+  void _showShazamDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const ShazamRecordingDialog(),
+    );
+  }
 }
+
+// Shazam Recording Dialog
+class ShazamRecordingDialog extends StatefulWidget {
+  const ShazamRecordingDialog({super.key});
+
+  @override
+  State<ShazamRecordingDialog> createState() => _ShazamRecordingDialogState();
+}
+
+class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  bool _isRecording = false;
+  String _statusText = 'Tap to start listening...';
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  void _toggleRecording() async {
+    if (_isRecording) {
+      // Stop recording and identify
+      setState(() {
+        _statusText = 'Identifying song...';
+        _isRecording = false;
+      });
+      
+      // Simulate identification (in real app, this would call ShazamService)
+      await Future.delayed(const Duration(seconds: 2));
+      
+      if (mounted) {
+        Navigator.pop(context);
+        _showFeatureComingSoon();
+      }
+    } else {
+      // Start recording
+      setState(() {
+        _isRecording = true;
+        _statusText = 'Listening...';
+      });
+    }
+  }
+
+  void _showFeatureComingSoon() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.construction, color: Colors.orange),
+            SizedBox(width: 12),
+            Text('Coming Soon!'),
+          ],
+        ),
+        content: const Text(
+          'Audio recognition with Shazam/AudD will be available soon!\n\n'
+          'For now, you can search songs by typing the name or artist.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(32),
+      ),
+      backgroundColor: colorScheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Title
+            Text(
+              'Song Recognition',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _statusText,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 40),
+            
+            // Animated microphone button
+            GestureDetector(
+              onTap: _toggleRecording,
+              child: AnimatedBuilder(
+                animation: _pulseController,
+                builder: (context, child) {
+                  return Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: _isRecording
+                            ? [
+                                colorScheme.primary.withOpacity(0.3),
+                                colorScheme.primary.withOpacity(0.1),
+                                Colors.transparent,
+                              ]
+                            : [
+                                colorScheme.primary.withOpacity(0.2),
+                                Colors.transparent,
+                              ],
+                      ),
+                      boxShadow: [
+                        if (_isRecording)
+                          BoxShadow(
+                            color: colorScheme.primary.withOpacity(
+                              0.3 * _pulseController.value,
+                            ),
+                            blurRadius: 40,
+                            spreadRadius: 20,
+                          ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _isRecording
+                              ? colorScheme.error
+                              : colorScheme.primary,
+                          boxShadow: [
+                            BoxShadow(
+                              color: _isRecording
+                                  ? colorScheme.error.withOpacity(0.5)
+                                  : colorScheme.primary.withOpacity(0.5),
+                              blurRadius: 20,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+                          size: 40,
+                          color: _isRecording
+                              ? colorScheme.onError
+                              : colorScheme.onPrimary,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            
+            const SizedBox(height: 40),
+            
+            // Cancel button
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
