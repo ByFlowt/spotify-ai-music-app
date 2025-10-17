@@ -457,7 +457,7 @@ class _HomePageState extends State<HomePage> {
                       : Container(
                           width: 160,
                           height: 120,
-                          color: colorScheme.surfaceVariant,
+                          color: colorScheme.surfaceContainerHighest,
                           child: Icon(
                             Icons.music_note,
                             size: 40,
@@ -568,7 +568,7 @@ class _HomePageState extends State<HomePage> {
                       : Container(
                           width: 140,
                           height: 110,
-                          color: colorScheme.surfaceVariant,
+                          color: colorScheme.surfaceContainerHighest,
                           child: Icon(
                             Icons.person,
                             size: 40,

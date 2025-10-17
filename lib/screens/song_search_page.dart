@@ -81,7 +81,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
                   // Search Bar
                   Container(
                     decoration: BoxDecoration(
-                      color: colorScheme.surfaceVariant.withOpacity(0.5),
+                      color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: colorScheme.outline.withOpacity(0.2),
@@ -323,7 +323,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
-      color: colorScheme.surfaceVariant.withOpacity(0.3),
+      color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -344,7 +344,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
                 height: 60,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: colorScheme.surfaceVariant,
+                  color: colorScheme.surfaceContainerHighest,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
@@ -405,7 +405,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
                   if (inPlaylist) {
                     playlistManager.removeTrack(track.id);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
+                      const SnackBar(
                         content: Text('Removed from playlist'),
                         backgroundColor: Colors.orange,
                         behavior: SnackBarBehavior.floating,
@@ -414,7 +414,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
                   } else {
                     playlistManager.addTrack(track);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
+                      const SnackBar(
                         content: Text('Added to playlist!'),
                         backgroundColor: Colors.green,
                         behavior: SnackBarBehavior.floating,

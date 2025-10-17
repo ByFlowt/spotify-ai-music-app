@@ -14,6 +14,11 @@ class PlaylistManager extends ChangeNotifier {
     _loadPlaylist();
   }
 
+  // Public method to reload playlists from storage
+  Future<void> loadPlaylistsFromStorage() async {
+    await _loadPlaylist();
+  }
+
   // Load playlist from local storage
   Future<void> _loadPlaylist() async {
     try {

@@ -243,14 +243,14 @@ class _LoginPageState extends State<LoginPage>
                                     shadowColor:
                                         const Color(0xFF1DB954).withOpacity(0.5),
                                   ),
-                                  child: Row(
+                                  child: const Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(
                                         Icons.login,
                                         size: 28,
                                       ),
-                                      const SizedBox(width: 16),
+                                      SizedBox(width: 16),
                                       Text(
                                         'Login with Spotify',
                                         style: TextStyle(

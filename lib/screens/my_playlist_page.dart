@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../services/playlist_manager.dart';
 import 'track_detail_page.dart';
@@ -10,9 +11,40 @@ class MyPlaylistPage extends StatefulWidget {
   State<MyPlaylistPage> createState() => _MyPlaylistPageState();
 }
 
-class _MyPlaylistPageState extends State<MyPlaylistPage> {
+class _MyPlaylistPageState extends State<MyPlaylistPage>
+    with WidgetsBindingObserver {
   bool _showMainPlaylist = true;
   bool _showAIPlaylist = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Refresh playlist data when page is opened
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshPlaylists();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Refresh when app comes to foreground
+    if (state == AppLifecycleState.resumed) {
+      _refreshPlaylists();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _refreshPlaylists() async {
+    final playlistManager = context.read<PlaylistManager>();
+    // Force reload from storage
+    await playlistManager.loadPlaylistsFromStorage();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +53,11 @@ class _MyPlaylistPageState extends State<MyPlaylistPage> {
     final playlistManager = context.watch<PlaylistManager>();
     
     final totalTracks = playlistManager.count + playlistManager.aiCount;
+    
+    // Debug logging
+    if (kDebugMode) {
+      print('🎵 [MY PLAYLIST] Building page - Main: ${playlistManager.count}, AI: ${playlistManager.aiCount}, Total: $totalTracks');
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -39,82 +76,86 @@ class _MyPlaylistPageState extends State<MyPlaylistPage> {
       ),
       body: totalTracks == 0
           ? _buildEmptyState(context)
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Overall Header
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                colorScheme.primaryContainer,
-                                colorScheme.secondaryContainer,
+          : RefreshIndicator(
+              onRefresh: _refreshPlaylists,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    // Overall Header
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  colorScheme.primaryContainer,
+                                  colorScheme.secondaryContainer,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(
+                              Icons.playlist_play_rounded,
+                              size: 32,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Your Collection',
+                                  style: textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  '$totalTracks ${totalTracks == 1 ? 'song' : 'songs'}',
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(16),
                           ),
-                          child: Icon(
-                            Icons.playlist_play_rounded,
-                            size: 32,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Your Collection',
-                                style: textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                '$totalTracks ${totalTracks == 1 ? 'song' : 'songs'}',
-                                style: textTheme.bodyMedium?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Main Playlist Section
-                  if (playlistManager.count > 0)
-                    _buildPlaylistSection(
-                      context,
-                      'My Playlist',
-                      playlistManager.playlist,
-                      Icons.playlist_play_rounded,
-                      _showMainPlaylist,
-                      (value) => setState(() => _showMainPlaylist = value),
-                      playlistManager,
-                      onClear: () => _showClearDialog(context, playlistManager, 'main'),
+                        ],
+                      ),
                     ),
 
-                  // AI Playlist Section (Folder)
-                  if (playlistManager.aiCount > 0)
-                    _buildPlaylistSection(
-                      context,
-                      'AI Playlist',
-                      playlistManager.aiPlaylist,
-                      Icons.auto_awesome_rounded,
-                      _showAIPlaylist,
-                      (value) => setState(() => _showAIPlaylist = value),
-                      playlistManager,
-                      isAIPlaylist: true,
-                      onClear: () => _showClearDialog(context, playlistManager, 'ai'),
-                    ),
-                ],
+                    // Main Playlist Section
+                    if (playlistManager.count > 0)
+                      _buildPlaylistSection(
+                        context,
+                        'My Playlist',
+                        playlistManager.playlist,
+                        Icons.playlist_play_rounded,
+                        _showMainPlaylist,
+                        (value) => setState(() => _showMainPlaylist = value),
+                        playlistManager,
+                        onClear: () => _showClearDialog(context, playlistManager, 'main'),
+                      ),
+
+                    // AI Playlist Section (Folder)
+                    if (playlistManager.aiCount > 0)
+                      _buildPlaylistSection(
+                        context,
+                        'AI Playlist',
+                        playlistManager.aiPlaylist,
+                        Icons.auto_awesome_rounded,
+                        _showAIPlaylist,
+                        (value) => setState(() => _showAIPlaylist = value),
+                        playlistManager,
+                        isAIPlaylist: true,
+                        onClear: () => _showClearDialog(context, playlistManager, 'ai'),
+                      ),
+                  ],
+                ),
               ),
             ),
     );
@@ -239,7 +280,7 @@ class _MyPlaylistPageState extends State<MyPlaylistPage> {
             Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceVariant.withOpacity(0.5),
+                color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -282,7 +323,7 @@ class _MyPlaylistPageState extends State<MyPlaylistPage> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
-      color: colorScheme.surfaceVariant.withOpacity(0.3),
+      color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -329,7 +370,7 @@ class _MyPlaylistPageState extends State<MyPlaylistPage> {
                 height: 50,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
-                  color: colorScheme.surfaceVariant,
+                  color: colorScheme.surfaceContainerHighest,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),

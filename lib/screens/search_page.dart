@@ -192,7 +192,7 @@ class _SearchPageState extends State<SearchPage> {
                                     _buildModernSuggestionChip('Dr. Peacock', colorScheme),
                                     _buildModernSuggestionChip('Dr. Peacock & The Whistlers', colorScheme),
                                     _buildModernSuggestionChip('Dr. Peacock', colorScheme),
-                                  ]) as List<Widget>,
+                                  ]),
                           ),
                         ),
                       ],
@@ -589,7 +589,7 @@ class _SearchPageState extends State<SearchPage> {
                   height: 90,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
-                    color: colorScheme.surfaceVariant,
+                    color: colorScheme.surfaceContainerHighest,
                     border: Border.all(
                       color: colorScheme.outlineVariant.withOpacity(0.3),
                       width: 1,

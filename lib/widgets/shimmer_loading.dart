@@ -56,9 +56,9 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
               colors: [
-                colorScheme.surfaceVariant,
-                colorScheme.surfaceVariant.withOpacity(0.5),
-                colorScheme.surfaceVariant,
+                colorScheme.surfaceContainerHighest,
+                colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                colorScheme.surfaceContainerHighest,
               ],
               stops: [
                 0.0,

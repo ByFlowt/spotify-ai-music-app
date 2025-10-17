@@ -67,9 +67,7 @@ class SpotifyService extends ChangeNotifier {
         throw Exception('Failed to get access token: ${response.statusCode}');
       }
     } catch (e) {
-      if (_error == null) {
-        _error = 'Connection error: Please check your internet connection';
-      }
+      _error ??= 'Connection error: Please check your internet connection';
       
       if (kIsWeb) {
         html.window.console.error('❌ [SPOTIFY] Exception: $e');

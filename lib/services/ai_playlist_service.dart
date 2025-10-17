@@ -491,6 +491,7 @@ class AIPlaylistService extends ChangeNotifier {
     _log('💾 Saving ${_generatedTracks.length} tracks to AI playlist folder...');
     await _playlistManager.addTracksToAI(_generatedTracks);
     _log('✅ All tracks saved to AI playlist folder successfully!');
+    _log('📊 AI Playlist now has: ${_playlistManager.aiCount} tracks');
   }
 
   // Quick actions

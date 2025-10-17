@@ -129,7 +129,7 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
                 children: [
                   // Description
                   Card(
-                    color: colorScheme.surfaceVariant.withOpacity(0.3),
+                    color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
@@ -503,7 +503,7 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
                               fit: BoxFit.cover,
                             )
                           : null,
-                      color: colorScheme.surfaceVariant,
+                      color: colorScheme.surfaceContainerHighest,
                     ),
                     child: track.imageUrl == null
                         ? Icon(

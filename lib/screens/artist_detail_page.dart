@@ -88,7 +88,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) return child;
                               return Container(
-                                color: colorScheme.surfaceVariant,
+                                color: colorScheme.surfaceContainerHighest,
                                 child: Center(
                                   child: CircularProgressIndicator(
                                     color: colorScheme.primary,
@@ -97,7 +97,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
                               );
                             },
                             errorBuilder: (context, error, stackTrace) => Container(
-                              color: colorScheme.surfaceVariant,
+                              color: colorScheme.surfaceContainerHighest,
                               child: Icon(
                                 Icons.person_rounded,
                                 size: 80,
@@ -106,7 +106,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
                             ),
                           )
                         : Container(
-                            color: colorScheme.surfaceVariant,
+                            color: colorScheme.surfaceContainerHighest,
                             child: Icon(
                               Icons.person_rounded,
                               size: 80,
@@ -336,7 +336,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.3),
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
@@ -385,7 +385,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
               height: 60,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                color: colorScheme.surfaceVariant,
+                color: colorScheme.surfaceContainerHighest,
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),

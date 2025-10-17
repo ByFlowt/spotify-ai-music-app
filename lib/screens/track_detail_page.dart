@@ -156,7 +156,7 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
                       widget.track.imageUrl!,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
-                        color: colorScheme.surfaceVariant,
+                        color: colorScheme.surfaceContainerHighest,
                         child: Icon(
                           Icons.music_note_rounded,
                           size: 80,
@@ -166,7 +166,7 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
                     )
                   else
                     Container(
-                      color: colorScheme.surfaceVariant,
+                      color: colorScheme.surfaceContainerHighest,
                       child: Icon(
                         Icons.music_note_rounded,
                         size: 80,
@@ -297,12 +297,12 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
                           if (_duration.inSeconds > 0) ...[
                             const SizedBox(height: 8),
                             SliderTheme(
-                              data: SliderThemeData(
+                              data: const SliderThemeData(
                                 trackHeight: 4,
-                                thumbShape: const RoundSliderThumbShape(
+                                thumbShape: RoundSliderThumbShape(
                                   enabledThumbRadius: 6,
                                 ),
-                                overlayShape: const RoundSliderOverlayShape(
+                                overlayShape: RoundSliderOverlayShape(
                                   overlayRadius: 14,
                                 ),
                               ),
@@ -345,7 +345,7 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: colorScheme.surfaceVariant.withOpacity(0.5),
+                        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: colorScheme.outline.withOpacity(0.3),

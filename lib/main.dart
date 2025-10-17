@@ -231,8 +231,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircularProgressIndicator(
-                  color: const Color(0xFF1DB954),
+                const CircularProgressIndicator(
+                  color: Color(0xFF1DB954),
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -342,12 +342,12 @@ class _MainNavigatorState extends State<MainNavigator> {
                   elevation: 4,
                   child: InkWell(
                     onTap: widget.onLoginRequest,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       child: Row(
                         children: [
                           Icon(Icons.info_outline, color: Colors.white, size: 20),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               'Guest Mode - Login for personalized features',
