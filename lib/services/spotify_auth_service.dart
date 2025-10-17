@@ -51,6 +51,39 @@ class SpotifyAuthService extends ChangeNotifier {
   
   SpotifyAuthService() {
     _loadStoredTokens();
+    // Check if we're returning from OAuth callback
+    if (kIsWeb) {
+      _checkForAuthCallback();
+    }
+  }
+  
+  // Check if current URL has auth callback parameters
+  Future<void> _checkForAuthCallback() async {
+    try {
+      final currentUrl = html.window.location.href;
+      _log('🔐 [AUTH] Checking current URL for auth callback: $currentUrl');
+      
+      // Check if we have an access token in the URL fragment
+      final fragment = html.window.location.hash;
+      if (fragment.isNotEmpty && fragment.contains('access_token')) {
+        _log('🔐 [AUTH] Found access token in URL fragment!');
+        
+        // Check if auth was in progress
+        final authInProgress = await _storage.read(key: 'spotify_auth_in_progress');
+        if (authInProgress == 'true') {
+          _log('🔐 [AUTH] Processing OAuth callback...');
+          await _storage.delete(key: 'spotify_auth_in_progress');
+          
+          // Process the callback
+          await _processAuthCallback(currentUrl);
+          
+          // Clean the URL
+          html.window.history.replaceState(null, '', html.window.location.pathname);
+        }
+      }
+    } catch (e) {
+      _logError('❌ [AUTH] Error checking for auth callback: $e');
+    }
   }
   
   // Public method to check auth status (calls _loadStoredTokens)
@@ -81,11 +114,9 @@ class SpotifyAuthService extends ChangeNotifier {
   // Login with Spotify OAuth - Using Implicit Grant Flow for web
   Future<bool> login() async {
     // Always log to browser console for web debugging
-    if (kIsWeb) {
-      _log('🔐 [AUTH] Starting Spotify login flow...');
-      _log('🔐 [AUTH] Client ID: $clientId');
-      _log('🔐 [AUTH] Redirect URI: $redirectUri');
-    }
+    _log('🔐 [AUTH] Starting Spotify login flow...');
+    _log('🔐 [AUTH] Client ID: $clientId');
+    _log('🔐 [AUTH] Redirect URI: $redirectUri');
     
     _isLoading = true;
     _error = null;
@@ -113,39 +144,56 @@ class SpotifyAuthService extends ChangeNotifier {
         'show_dialog': 'false',
       });
       
+      _log('🔐 [AUTH] Opening authorization URL...');
+      _log('🔐 [AUTH] URL: $authUrl');
+      
+      // For web, use direct window navigation instead of FlutterWebAuth2
       if (kIsWeb) {
-        _log('🔐 [AUTH] Opening authorization URL...');
-        _log('🔐 [AUTH] URL: $authUrl');
-      }
-      
-      // Open browser for authentication
-      _log('🔐 [AUTH] Calling FlutterWebAuth2.authenticate...');
-      
-      final result = await FlutterWebAuth2.authenticate(
-        url: authUrl.toString(),
-        callbackUrlScheme: 'https',
-        options: const FlutterWebAuth2Options(
-          intentFlags: ephemeralIntentFlags,
-        ),
-      );
-      
-      if (kIsWeb) {
+        _log('🔐 [AUTH] Using web window navigation...');
+        
+        // Store state that we're authenticating
+        await _storage.write(key: 'spotify_auth_in_progress', value: 'true');
+        
+        // Redirect current window to Spotify auth
+        html.window.location.href = authUrl.toString();
+        
+        // This won't return - the page will redirect
+        return false;
+      } else {
+        // For non-web platforms, use FlutterWebAuth2
+        _log('🔐 [AUTH] Using FlutterWebAuth2 for mobile...');
+        
+        final result = await FlutterWebAuth2.authenticate(
+          url: authUrl.toString(),
+          callbackUrlScheme: 'https',
+          options: const FlutterWebAuth2Options(
+            intentFlags: ephemeralIntentFlags,
+          ),
+        );
+        
         _log('🔐 [AUTH] Received callback result');
         _log('🔐 [AUTH] Result URL: $result');
+        
+        return await _processAuthCallback(result);
       }
-      
+    } catch (e) {
+      return _handleAuthError(e);
+    }
+  }
+  
+  // Process authentication callback
+  Future<bool> _processAuthCallback(String result) async {
+    try {
       // Extract access token from URL fragment (after #)
       // Format: https://byflowt.github.io/spotify-ai-music-app/#access_token=XXX&token_type=Bearer&expires_in=3600
       final uri = Uri.parse(result);
       
-      if (kDebugMode) {
-        print('🔐 [AUTH] Parsing callback URI...');
-        print('🔐 [AUTH] URI scheme: ${uri.scheme}');
-        print('🔐 [AUTH] URI host: ${uri.host}');
-        print('🔐 [AUTH] URI path: ${uri.path}');
-        print('🔐 [AUTH] URI fragment: ${uri.fragment}');
-        print('🔐 [AUTH] URI query: ${uri.query}');
-      }
+      _log('🔐 [AUTH] Parsing callback URI...');
+      _log('🔐 [AUTH] URI scheme: ${uri.scheme}');
+      _log('🔐 [AUTH] URI host: ${uri.host}');
+      _log('🔐 [AUTH] URI path: ${uri.path}');
+      _log('🔐 [AUTH] URI fragment: ${uri.fragment}');
+      _log('🔐 [AUTH] URI query: ${uri.query}');
       
       // Parse fragment manually since Uri doesn't parse # fragments as query params
       String? accessToken;
@@ -204,10 +252,8 @@ class SpotifyAuthService extends ChangeNotifier {
       await _storage.write(key: 'spotify_access_token', value: _accessToken);
       await _storage.write(key: 'spotify_token_expiry', value: _tokenExpiry!.toIso8601String());
       
-      if (kDebugMode) {
-        print('✅ [AUTH] Tokens stored successfully');
-        print('🔐 [AUTH] Fetching user profile...');
-      }
+      _log('✅ [AUTH] Tokens stored successfully');
+      _log('🔐 [AUTH] Fetching user profile...');
       
       // Get user profile
       await _fetchUserProfile();
@@ -216,32 +262,33 @@ class SpotifyAuthService extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       
-      if (kDebugMode) {
-        print('✅ [AUTH] Login successful!');
-        print('✅ [AUTH] User: ${_userProfile?['display_name'] ?? 'Unknown'}');
-        print('✅ [AUTH] Email: ${_userProfile?['email'] ?? 'N/A'}');
-      }
+      _log('✅ [AUTH] Login successful!');
+      _log('✅ [AUTH] User: ${_userProfile?['display_name'] ?? 'Unknown'}');
+      _log('✅ [AUTH] Email: ${_userProfile?['email'] ?? 'N/A'}');
       
       return true;
     } catch (e) {
-      // Check if user cancelled the login
-      if (e.toString().contains('CANCELED') || e.toString().contains('User cancelled')) {
-        _error = null; // Don't show error if user cancelled
-        _log('⚠️ [AUTH] Login cancelled by user');
-      } else {
-        _error = 'Login failed: ${e.toString()}';
-        if (kDebugMode) {
-          print('❌ [AUTH] Login error: $e');
-          print('❌ [AUTH] Error type: ${e.runtimeType}');
-        }
-      }
-      
-      _isLoading = false;
-      _isAuthenticated = false;
-      notifyListeners();
-      
-      return false;
+      return _handleAuthError(e);
     }
+  }
+  
+  // Handle authentication errors
+  bool _handleAuthError(dynamic e) {
+    // Check if user cancelled the login
+    if (e.toString().contains('CANCELED') || e.toString().contains('User cancelled')) {
+      _error = null; // Don't show error if user cancelled
+      _log('⚠️ [AUTH] Login cancelled by user');
+    } else {
+      _error = 'Login failed: ${e.toString()}';
+      _logError('❌ [AUTH] Login error: $e');
+      _logError('❌ [AUTH] Error type: ${e.runtimeType}');
+    }
+    
+    _isLoading = false;
+    _isAuthenticated = false;
+    notifyListeners();
+    
+    return false;
   }
   
   // Exchange authorization code for access and refresh tokens
