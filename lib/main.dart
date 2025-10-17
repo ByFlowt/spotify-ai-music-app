@@ -189,33 +189,70 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isChecking = true;
+
   @override
   void initState() {
     super.initState();
+    _checkAuth();
+  }
+
+  Future<void> _checkAuth() async {
     // Check for existing auth token when app starts
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<SpotifyAuthService>().checkAuthStatus();
-    });
+    await context.read<SpotifyAuthService>().checkAuthStatus();
+    
+    // Done checking
+    if (mounted) {
+      setState(() {
+        _isChecking = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final authService = context.watch<SpotifyAuthService>();
     
-    // Show loading while checking auth status
-    if (authService.isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
+    // Show loading splash while checking initial auth status
+    if (_isChecking || authService.isLoading) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+              ],
+            ),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  color: const Color(0xFF1DB954),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Loading...',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
     
-    if (authService.isAuthenticated) {
+    // Only show main app if authenticated with valid token
+    if (authService.isAuthenticated && authService.accessToken != null) {
       return const MainNavigator();
-    } else {
-      return const LoginPage();
     }
+    
+    // Show login if not authenticated or no token
+    return const LoginPage();
   }
 }
 

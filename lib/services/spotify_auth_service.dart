@@ -251,18 +251,39 @@ class SpotifyAuthService extends ChangeNotifier {
       }
       
       if (_accessToken != null) {
-        // Try to refresh token if expired
+        // Check if token is expired
         if (_tokenExpiry != null && DateTime.now().isAfter(_tokenExpiry!)) {
-          await refreshAccessToken();
+          // Token expired - with Implicit Grant we need to re-authenticate
+          if (kDebugMode) {
+            print('Token expired, clearing auth state');
+          }
+          await logout();
+          return;
         }
         
-        _isAuthenticated = true;
+        // Validate token by trying to fetch user profile
+        try {
+          await _fetchUserProfile();
+          _isAuthenticated = true;
+          if (kDebugMode) {
+            print('Successfully validated stored token');
+          }
+        } catch (e) {
+          // Token is invalid
+          if (kDebugMode) {
+            print('Stored token is invalid: $e');
+          }
+          await logout();
+          return;
+        }
+        
         notifyListeners();
       }
     } catch (e) {
       if (kDebugMode) {
         print('Error loading stored tokens: $e');
       }
+      await logout();
     }
   }
   
