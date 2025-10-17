@@ -32,7 +32,10 @@ All backend endpoints now handle OPTIONS requests:
 - `backend-proxy-example/api/audd.js` - Added OPTIONS handling
 
 ## Deployments
-1. **Backend Proxy:** https://backendproxy-m2bx21til-byflowt-prod-tests-projects.vercel.app
+1. **Backend Proxy (STABLE):** https://backendproxy.vercel.app
+   - Alternative URLs (auto-generated, change with each deploy):
+     - https://backendproxy-byflowt-prod-tests-projects.vercel.app
+     - https://backendproxy-[random]-byflowt-prod-tests-projects.vercel.app
 2. **Frontend Web App:** https://byflowt.github.io/spotify-ai-music-app/
 
 ## Testing Steps
