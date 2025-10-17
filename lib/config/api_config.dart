@@ -16,7 +16,7 @@ class ApiConfig {
 
   // AUDD Audio Recognition
   static String get auddApiKey =>
-      dotenv.env['AUDD_API_KEY'] ?? '';
+      dotenv.env['3cb567377b824e96657c208fcf07d2bf'] ?? '';
 
   /// Validate that all required API keys are configured
   static List<String> validateConfiguration() {
@@ -32,7 +32,7 @@ class ApiConfig {
       missing.add('GEMINI_API_KEY');
     }
     if (auddApiKey.isEmpty) {
-      missing.add('AUDD_API_KEY (optional for audio search)');
+      missing.add('3cb567377b824e96657c208fcf07d2bf');
     }
 
     return missing;

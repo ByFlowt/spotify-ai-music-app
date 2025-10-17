@@ -16,14 +16,43 @@ class SongSearchPage extends StatefulWidget {
 class _SongSearchPageState extends State<SongSearchPage> {
   final TextEditingController _searchController = TextEditingController();
   List<Track> _searchResults = [];
+  List<Track> _trendingTracks = [];
   bool _hasSearched = false;
+  bool _loadingTrending = false;
   String _sortBy = 'relevance';
   String _filterGenre = 'all';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTrendingAndTopTracks();
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadTrendingAndTopTracks() async {
+    setState(() => _loadingTrending = true);
+    try {
+      final spotifyService = context.read<SpotifyService>();
+      // Load trending tracks (high popularity)
+      final trendingResults = await spotifyService.searchTracks('trending');
+      trendingResults.sort((a, b) => (b.popularity).compareTo(a.popularity));
+      
+      if (mounted) {
+        setState(() {
+          _trendingTracks = trendingResults.take(5).toList();
+          _loadingTrending = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingTrending = false);
+      }
+    }
   }
 
   Future<void> _performSearch(String query) async {
@@ -430,6 +459,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
   }
 
   Widget _buildEmptyState(BuildContext context, ColorScheme colorScheme, TextTheme textTheme) {
+    final playlistManager = context.watch<PlaylistManager>();
+    
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -456,6 +487,8 @@ class _SongSearchPageState extends State<SongSearchPage> {
               ),
             ),
             const SizedBox(height: 40),
+            
+            // Feature Cards
             _buildFeatureCard(
               context,
               Icons.search_rounded,
@@ -479,6 +512,99 @@ class _SongSearchPageState extends State<SongSearchPage> {
               'Add songs to your playlist for later',
               colorScheme.tertiary,
             ),
+            const SizedBox(height: 40),
+            
+            // Trending Section
+            if (_loadingTrending)
+              Center(
+                child: CircularProgressIndicator(color: colorScheme.primary),
+              )
+            else ...[
+              if (_trendingTracks.isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '🔥 Trending Now',
+                      style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    ..._trendingTracks.map((track) {
+                      final isAdded = playlistManager.isInPlaylist(track.id);
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: colorScheme.outlineVariant.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: Image.network(
+                                track.imageUrl ?? 'https://via.placeholder.com/40?text=No+Image',
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 40,
+                                    height: 40,
+                                    color: colorScheme.surfaceContainer,
+                                    child: Icon(Icons.music_note, size: 20),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    track.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                  Text(
+                                    track.artistName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () async {
+                                if (isAdded) {
+                                  await playlistManager.removeTrack(track.id);
+                                } else {
+                                  await playlistManager.addTrack(track);
+                                }
+                                setState(() {});
+                              },
+                              icon: Icon(
+                                isAdded ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                color: isAdded ? Colors.red : colorScheme.onSurfaceVariant,
+                                size: 20,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+            ],
           ],
         ),
       ),

@@ -8,6 +8,7 @@ import 'screens/song_search_page.dart';
 import 'screens/my_playlist_page.dart';
 import 'screens/ai_playlist_page.dart';
 import 'screens/login_page.dart';
+import 'screens/settings_page.dart';
 import 'services/spotify_service.dart';
 import 'services/playlist_manager.dart';
 import 'services/ai_playlist_service.dart';
@@ -317,6 +318,7 @@ class _MainNavigatorState extends State<MainNavigator> {
         const HomePage(),
         const SearchPage(),
         const SongSearchPage(),
+        const SettingsPage(),
       ];
     } else {
       return [
@@ -325,6 +327,7 @@ class _MainNavigatorState extends State<MainNavigator> {
         const AIPlaylistPage(),
         const SongSearchPage(),
         const MyPlaylistPage(),
+        const SettingsPage(),
       ];
     }
   }
@@ -415,6 +418,11 @@ class _MainNavigatorState extends State<MainNavigator> {
                   selectedIcon: Icon(Icons.music_note),
                   label: 'Songs',
                 ),
+                const NavigationDestination(
+                  icon: Icon(Icons.settings_outlined),
+                  selectedIcon: Icon(Icons.settings),
+                  label: 'Settings',
+                ),
               ]
             : [
                 const NavigationDestination(
@@ -453,6 +461,11 @@ class _MainNavigatorState extends State<MainNavigator> {
                     child: const Icon(Icons.playlist_play),
                   ),
                   label: 'My List',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.settings_outlined),
+                  selectedIcon: Icon(Icons.settings),
+                  label: 'Settings',
                 ),
               ],
       ),
