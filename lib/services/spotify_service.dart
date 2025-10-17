@@ -106,6 +106,31 @@ class SpotifyService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Get the appropriate access token (prefer user token over app token)
+  Future<String> _getValidToken() async {
+    // Prefer user token if available
+    if (_userAccessToken != null && _userAccessToken!.isNotEmpty) {
+      if (kIsWeb) {
+        html.window.console.log('🎵 [SPOTIFY] Using user access token');
+      }
+      return _userAccessToken!;
+    }
+    
+    // Fall back to app token (guest mode)
+    if (_accessToken == null || _accessToken!.isEmpty) {
+      await _getAccessToken();
+    }
+    
+    if (_accessToken != null && _accessToken!.isNotEmpty) {
+      if (kIsWeb) {
+        html.window.console.log('🎵 [SPOTIFY] Using guest mode token');
+      }
+      return _accessToken!;
+    }
+    
+    throw Exception('No valid Spotify token available. Please login.');
+  }
+
   /// Search for artists
   Future<List<Artist>> searchArtists(String query) async {
     if (query.trim().isEmpty) return [];
@@ -115,17 +140,15 @@ class SpotifyService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Get token if not available
-      if (_accessToken == null) {
-        await _getAccessToken();
-      }
+      // Get appropriate token
+      final token = await _getValidToken();
 
       final response = await http.get(
         Uri.parse(
           'https://api.spotify.com/v1/search?q=${Uri.encodeComponent(query)}&type=artist&limit=20',
         ),
         headers: {
-          'Authorization': 'Bearer $_accessToken',
+          'Authorization': 'Bearer $token',
         },
       );
 
