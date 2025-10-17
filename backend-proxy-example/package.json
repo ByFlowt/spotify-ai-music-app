@@ -1,0 +1,13 @@
+{
+  "name": "spotify-ai-proxy",
+  "version": "1.0.0",
+  "description": "Secure API proxy for Spotify AI app",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  }
+}
