@@ -1,10 +1,28 @@
 import 'dart:convert';
+import 'dart:html' as html;
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+
+// Helper function for web console logging
+void _log(String message) {
+  if (kIsWeb) {
+    html.window.console.log(message);
+  } else if (kDebugMode) {
+    print(message);
+  }
+}
+
+void _logError(String message) {
+  if (kIsWeb) {
+    html.window.console.error(message);
+  } else if (kDebugMode) {
+    print(message);
+  }
+}
 
 class SpotifyAuthService extends ChangeNotifier {
   static const String clientId = 'ce1797970d2d4ec8852fa68a54fe8a8f';
@@ -62,10 +80,11 @@ class SpotifyAuthService extends ChangeNotifier {
   
   // Login with Spotify OAuth - Using Implicit Grant Flow for web
   Future<bool> login() async {
-    if (kDebugMode) {
-      print('🔐 [AUTH] Starting Spotify login flow...');
-      print('🔐 [AUTH] Client ID: $clientId');
-      print('🔐 [AUTH] Redirect URI: $redirectUri');
+    // Always log to browser console for web debugging
+    if (kIsWeb) {
+      _log('🔐 [AUTH] Starting Spotify login flow...');
+      _log('🔐 [AUTH] Client ID: $clientId');
+      _log('🔐 [AUTH] Redirect URI: $redirectUri');
     }
     
     _isLoading = true;
@@ -83,9 +102,7 @@ class SpotifyAuthService extends ChangeNotifier {
         'playlist-modify-private',
       ].join(' ');
       
-      if (kDebugMode) {
-        print('🔐 [AUTH] Scopes requested: $scopes');
-      }
+      _log('🔐 [AUTH] Scopes requested: $scopes');
       
       // Use Implicit Grant Flow (response_type=token) for web without backend
       final authUrl = Uri.https('accounts.spotify.com', '/authorize', {
@@ -96,15 +113,13 @@ class SpotifyAuthService extends ChangeNotifier {
         'show_dialog': 'false',
       });
       
-      if (kDebugMode) {
-        print('🔐 [AUTH] Opening authorization URL...');
-        print('🔐 [AUTH] URL: $authUrl');
+      if (kIsWeb) {
+        _log('🔐 [AUTH] Opening authorization URL...');
+        _log('🔐 [AUTH] URL: $authUrl');
       }
       
       // Open browser for authentication
-      if (kDebugMode) {
-        print('🔐 [AUTH] Calling FlutterWebAuth2.authenticate...');
-      }
+      _log('🔐 [AUTH] Calling FlutterWebAuth2.authenticate...');
       
       final result = await FlutterWebAuth2.authenticate(
         url: authUrl.toString(),
@@ -114,9 +129,9 @@ class SpotifyAuthService extends ChangeNotifier {
         ),
       );
       
-      if (kDebugMode) {
-        print('🔐 [AUTH] Received callback result');
-        print('🔐 [AUTH] Result URL: $result');
+      if (kIsWeb) {
+        _log('🔐 [AUTH] Received callback result');
+        _log('🔐 [AUTH] Result URL: $result');
       }
       
       // Extract access token from URL fragment (after #)
@@ -138,40 +153,30 @@ class SpotifyAuthService extends ChangeNotifier {
       
       // Try to parse fragment
       if (uri.fragment.isNotEmpty) {
-        if (kDebugMode) {
-          print('🔐 [AUTH] Processing fragment parameters...');
-        }
+        _log('🔐 [AUTH] Processing fragment parameters...');
         final fragmentParams = Uri.splitQueryString(uri.fragment);
-        if (kDebugMode) {
-          print('🔐 [AUTH] Fragment params: ${fragmentParams.keys.join(", ")}');
-        }
+        _log('🔐 [AUTH] Fragment params: ${fragmentParams.keys.join(", ")}');
         accessToken = fragmentParams['access_token'];
         expiresIn = int.tryParse(fragmentParams['expires_in'] ?? '3600');
         
         // Also check for error in fragment
         final error = fragmentParams['error'];
         if (error != null) {
-          if (kDebugMode) {
-            print('❌ [AUTH] Error in fragment: $error');
-          }
+          _log('❌ [AUTH] Error in fragment: $error');
           throw Exception('Spotify authentication error: $error');
         }
       }
       
       // Also try query params (in case it's in the query instead of fragment)
       if (accessToken == null && uri.queryParameters.isNotEmpty) {
-        if (kDebugMode) {
-          print('🔐 [AUTH] Trying query parameters...');
-        }
+        _log('🔐 [AUTH] Trying query parameters...');
         accessToken = uri.queryParameters['access_token'];
         expiresIn = int.tryParse(uri.queryParameters['expires_in'] ?? '3600');
         
         // Also check for error in query params
         final error = uri.queryParameters['error'];
         if (error != null) {
-          if (kDebugMode) {
-            print('❌ [AUTH] Error in query: $error');
-          }
+          _log('❌ [AUTH] Error in query: $error');
           throw Exception('Spotify authentication error: $error');
         }
       }
@@ -191,9 +196,7 @@ class SpotifyAuthService extends ChangeNotifier {
       }
       
       // Store tokens
-      if (kDebugMode) {
-        print('🔐 [AUTH] Storing tokens to secure storage...');
-      }
+      _log('🔐 [AUTH] Storing tokens to secure storage...');
       
       _accessToken = accessToken;
       _tokenExpiry = DateTime.now().add(Duration(seconds: expiresIn ?? 3600));
@@ -224,9 +227,7 @@ class SpotifyAuthService extends ChangeNotifier {
       // Check if user cancelled the login
       if (e.toString().contains('CANCELED') || e.toString().contains('User cancelled')) {
         _error = null; // Don't show error if user cancelled
-        if (kDebugMode) {
-          print('⚠️ [AUTH] Login cancelled by user');
-        }
+        _log('⚠️ [AUTH] Login cancelled by user');
       } else {
         _error = 'Login failed: ${e.toString()}';
         if (kDebugMode) {
@@ -312,9 +313,7 @@ class SpotifyAuthService extends ChangeNotifier {
   
   // Load stored tokens on app start
   Future<void> _loadStoredTokens() async {
-    if (kDebugMode) {
-      print('🔐 [AUTH] Loading stored tokens from secure storage...');
-    }
+    _log('🔐 [AUTH] Loading stored tokens from secure storage...');
     
     try {
       _accessToken = await _storage.read(key: 'spotify_access_token');
@@ -340,17 +339,13 @@ class SpotifyAuthService extends ChangeNotifier {
         // Check if token is expired
         if (_tokenExpiry != null && DateTime.now().isAfter(_tokenExpiry!)) {
           // Token expired - with Implicit Grant we need to re-authenticate
-          if (kDebugMode) {
-            print('⚠️ [AUTH] Token expired, clearing auth state');
-          }
+          _log('⚠️ [AUTH] Token expired, clearing auth state');
           await logout();
           return;
         }
         
         // Validate token by trying to fetch user profile
-        if (kDebugMode) {
-          print('🔐 [AUTH] Validating stored token...');
-        }
+        _log('🔐 [AUTH] Validating stored token...');
         
         try {
           await _fetchUserProfile();
@@ -361,29 +356,21 @@ class SpotifyAuthService extends ChangeNotifier {
           }
         } catch (e) {
           // Token is invalid
-          if (kDebugMode) {
-            print('❌ [AUTH] Stored token is invalid: $e');
-          }
+          _log('❌ [AUTH] Stored token is invalid: $e');
           await logout();
           return;
         }
       } else {
         // No stored tokens found - user needs to login
-        if (kDebugMode) {
-          print('ℹ️ [AUTH] No stored tokens found - guest mode');
-        }
+        _log('ℹ️ [AUTH] No stored tokens found - guest mode');
         _isAuthenticated = false;
       }
       
       // Always notify listeners when done checking
-      if (kDebugMode) {
-        print('🔐 [AUTH] Token loading complete. Authenticated: $_isAuthenticated');
-      }
+      _log('🔐 [AUTH] Token loading complete. Authenticated: $_isAuthenticated');
       notifyListeners();
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ [AUTH] Error loading stored tokens: $e');
-      }
+      _log('❌ [AUTH] Error loading stored tokens: $e');
       await logout();
     }
   }
@@ -404,3 +391,4 @@ class SpotifyAuthService extends ChangeNotifier {
     notifyListeners();
   }
 }
+

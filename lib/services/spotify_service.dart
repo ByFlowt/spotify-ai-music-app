@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:html' as html;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/artist_model.dart';
@@ -20,15 +21,16 @@ class SpotifyService extends ChangeNotifier {
 
   // Get access token using Client Credentials Flow
   Future<void> _getAccessToken() async {
+    if (kIsWeb) {
+      html.window.console.log('🎵 [SPOTIFY] Getting access token for guest mode...');
+    }
+    
     try {
-      // Check if credentials are set to placeholder values
-      if (clientId == 'ce1797970d2d4ec8852fa68a54fe8a8f' || clientSecret == '2eb0d963befb41f0998ddd703c8a8b7a') {
-        _error = 'Please add your Spotify API credentials in spotify_service.dart';
-        notifyListeners();
-        throw Exception('Spotify credentials not configured');
-      }
-
       final credentials = base64Encode(utf8.encode('$clientId:$clientSecret'));
+      
+      if (kIsWeb) {
+        html.window.console.log('🎵 [SPOTIFY] Requesting token from Spotify API...');
+      }
       
       final response = await http.post(
         Uri.parse('https://accounts.spotify.com/api/token'),
@@ -43,9 +45,18 @@ class SpotifyService extends ChangeNotifier {
         final data = jsonDecode(response.body);
         _accessToken = data['access_token'];
         _error = null;
+        
+        if (kIsWeb) {
+          html.window.console.log('✅ [SPOTIFY] Access token obtained successfully');
+        }
       } else {
         final errorData = jsonDecode(response.body);
-        _error = 'Spotify API Error: ${errorData['error_description'] ?? 'Invalid credentials'}. Please check your Client ID and Client Secret at developer.spotify.com';
+        _error = 'Spotify API Error: ${errorData['error_description'] ?? 'Invalid credentials'}';
+        
+        if (kIsWeb) {
+          html.window.console.error('❌ [SPOTIFY] API Error: $_error');
+        }
+        
         notifyListeners();
         throw Exception('Failed to get access token: ${response.statusCode}');
       }
@@ -53,6 +64,11 @@ class SpotifyService extends ChangeNotifier {
       if (_error == null) {
         _error = 'Connection error: Please check your internet connection';
       }
+      
+      if (kIsWeb) {
+        html.window.console.error('❌ [SPOTIFY] Exception: $e');
+      }
+      
       notifyListeners();
       rethrow;
     }
