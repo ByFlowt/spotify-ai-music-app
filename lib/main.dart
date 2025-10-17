@@ -416,17 +416,17 @@ class _MainNavigatorState extends State<MainNavigator> {
                 ),
                 NavigationDestination(
                   icon: Badge(
-                    label: playlistManager.count > 0 
-                        ? Text('${playlistManager.count}')
+                    label: (playlistManager.count + playlistManager.aiCount) > 0 
+                        ? Text('${playlistManager.count + playlistManager.aiCount}')
                         : null,
-                    isLabelVisible: playlistManager.count > 0,
+                    isLabelVisible: (playlistManager.count + playlistManager.aiCount) > 0,
                     child: const Icon(Icons.playlist_play_outlined),
                   ),
                   selectedIcon: Badge(
-                    label: playlistManager.count > 0 
-                        ? Text('${playlistManager.count}')
+                    label: (playlistManager.count + playlistManager.aiCount) > 0 
+                        ? Text('${playlistManager.count + playlistManager.aiCount}')
                         : null,
-                    isLabelVisible: playlistManager.count > 0,
+                    isLabelVisible: (playlistManager.count + playlistManager.aiCount) > 0,
                     child: const Icon(Icons.playlist_play),
                   ),
                   label: 'My List',

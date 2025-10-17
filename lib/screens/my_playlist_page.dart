@@ -3,98 +3,226 @@ import 'package:provider/provider.dart';
 import '../services/playlist_manager.dart';
 import 'track_detail_page.dart';
 
-class MyPlaylistPage extends StatelessWidget {
+class MyPlaylistPage extends StatefulWidget {
   const MyPlaylistPage({super.key});
+
+  @override
+  State<MyPlaylistPage> createState() => _MyPlaylistPageState();
+}
+
+class _MyPlaylistPageState extends State<MyPlaylistPage> {
+  bool _showMainPlaylist = true;
+  bool _showAIPlaylist = true;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final playlistManager = context.watch<PlaylistManager>();
+    
+    final totalTracks = playlistManager.count + playlistManager.aiCount;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Playlist'),
+        title: const Text('My Playlists'),
         elevation: 0,
         actions: [
-          if (playlistManager.count > 0)
+          if (totalTracks > 0)
             IconButton(
               onPressed: () {
-                _showClearDialog(context, playlistManager);
+                _showClearAllDialog(context, playlistManager);
               },
               icon: const Icon(Icons.delete_outline),
-              tooltip: 'Clear Playlist',
+              tooltip: 'Clear All Playlists',
             ),
         ],
       ),
-      body: playlistManager.count == 0
+      body: totalTracks == 0
           ? _buildEmptyState(context)
-          : Column(
-              children: [
-                // Playlist Header
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              colorScheme.primaryContainer,
-                              colorScheme.secondaryContainer,
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  // Overall Header
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                colorScheme.primaryContainer,
+                                colorScheme.secondaryContainer,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            Icons.playlist_play_rounded,
+                            size: 32,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your Collection',
+                                style: textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '$totalTracks ${totalTracks == 1 ? 'song' : 'songs'}',
+                                style: textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Icon(
-                          Icons.playlist_play_rounded,
-                          size: 32,
-                          color: colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Your Collection',
-                              style: textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              '${playlistManager.count} ${playlistManager.count == 1 ? 'song' : 'songs'}',
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                
-                // Tracks List
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: playlistManager.playlist.length,
-                    itemBuilder: (context, index) {
-                      final track = playlistManager.playlist[index];
-                      return _buildTrackCard(
-                        context,
-                        track,
-                        index + 1,
-                        playlistManager,
-                      );
-                    },
-                  ),
-                ),
-              ],
+
+                  // Main Playlist Section
+                  if (playlistManager.count > 0)
+                    _buildPlaylistSection(
+                      context,
+                      'My Playlist',
+                      playlistManager.playlist,
+                      Icons.playlist_play_rounded,
+                      _showMainPlaylist,
+                      (value) => setState(() => _showMainPlaylist = value),
+                      playlistManager,
+                      onClear: () => _showClearDialog(context, playlistManager, 'main'),
+                    ),
+
+                  // AI Playlist Section (Folder)
+                  if (playlistManager.aiCount > 0)
+                    _buildPlaylistSection(
+                      context,
+                      'AI Playlist',
+                      playlistManager.aiPlaylist,
+                      Icons.auto_awesome_rounded,
+                      _showAIPlaylist,
+                      (value) => setState(() => _showAIPlaylist = value),
+                      playlistManager,
+                      isAIPlaylist: true,
+                      onClear: () => _showClearDialog(context, playlistManager, 'ai'),
+                    ),
+                ],
+              ),
             ),
+    );
+  }
+
+  Widget _buildPlaylistSection(
+    BuildContext context,
+    String title,
+    List<dynamic> tracks,
+    IconData icon,
+    bool isExpanded,
+    Function(bool) onExpandChanged,
+    PlaylistManager playlistManager, {
+    bool isAIPlaylist = false,
+    VoidCallback? onClear,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: colorScheme.outlineVariant,
+          width: 1,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          // Folder Header
+          InkWell(
+            onTap: () => onExpandChanged(!isExpanded),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isAIPlaylist
+                          ? colorScheme.secondary.withOpacity(0.2)
+                          : colorScheme.primary.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 24,
+                      color: isAIPlaylist ? colorScheme.secondary : colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '${tracks.length} ${tracks.length == 1 ? 'song' : 'songs'}',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (onClear != null)
+                    IconButton(
+                      onPressed: onClear,
+                      icon: Icon(
+                        Icons.delete_outline,
+                        size: 20,
+                        color: colorScheme.error,
+                      ),
+                    ),
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Tracks List (Expandable)
+          if (isExpanded)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                children: List.generate(
+                  tracks.length,
+                  (index) => _buildTrackCard(
+                    context,
+                    tracks[index],
+                    index + 1,
+                    playlistManager,
+                    isAIPlaylist: isAIPlaylist,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -122,14 +250,14 @@ class MyPlaylistPage extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             Text(
-              'Your Playlist is Empty',
+              'Your Playlists are Empty',
               style: textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              'Search for songs or explore artists to add tracks to your playlist',
+              'Search for songs, explore artists, or generate AI playlists to build your collection',
               textAlign: TextAlign.center,
               style: textTheme.bodyLarge?.copyWith(
                 color: colorScheme.onSurfaceVariant,
@@ -145,8 +273,9 @@ class MyPlaylistPage extends StatelessWidget {
     BuildContext context,
     track,
     int position,
-    PlaylistManager playlistManager,
-  ) {
+    PlaylistManager playlistManager, {
+    bool isAIPlaylist = false,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -261,14 +390,25 @@ class MyPlaylistPage extends StatelessWidget {
                   ),
                   IconButton(
                     onPressed: () {
-                      playlistManager.removeTrack(track.id);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Removed from playlist'),
-                          backgroundColor: Colors.orange,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                      if (isAIPlaylist) {
+                        playlistManager.removeTrackFromAI(track.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Removed from AI Playlist'),
+                            backgroundColor: Colors.orange,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      } else {
+                        playlistManager.removeTrack(track.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Removed from playlist'),
+                            backgroundColor: Colors.orange,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
                     },
                     icon: Icon(
                       Icons.remove_circle_outline,
@@ -285,13 +425,56 @@ class MyPlaylistPage extends StatelessWidget {
     );
   }
 
-  void _showClearDialog(BuildContext context, PlaylistManager playlistManager) {
+  void _showClearDialog(
+    BuildContext context,
+    PlaylistManager playlistManager,
+    String playlistType,
+  ) {
+    final isAI = playlistType == 'ai';
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear Playlist?'),
+        title: Text('Clear ${isAI ? 'AI ' : ''}Playlist?'),
+        content: Text(
+          'Are you sure you want to remove all songs from your ${isAI ? 'AI ' : ''}playlist? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (isAI) {
+                playlistManager.clearAIPlaylist();
+              } else {
+                playlistManager.clearPlaylist();
+              }
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${isAI ? 'AI ' : ''}Playlist cleared'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showClearAllDialog(BuildContext context, PlaylistManager playlistManager) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear All Playlists?'),
         content: const Text(
-          'Are you sure you want to remove all songs from your playlist? This action cannot be undone.',
+          'Are you sure you want to remove all songs from all playlists? This action cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -301,10 +484,11 @@ class MyPlaylistPage extends StatelessWidget {
           FilledButton(
             onPressed: () {
               playlistManager.clearPlaylist();
+              playlistManager.clearAIPlaylist();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Playlist cleared'),
+                  content: Text('All playlists cleared'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
