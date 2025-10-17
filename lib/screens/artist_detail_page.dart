@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../models/artist_model.dart';
 import '../models/track_model.dart';
@@ -38,12 +39,25 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
   }
 
   Future<void> _loadTopTracks() async {
-    final spotifyService = context.read<SpotifyService>();
-    final tracks = await spotifyService.getArtistTopTracks(widget.artist.id);
-    setState(() {
-      _topTracks = tracks;
-      _isLoading = false;
-    });
+    try {
+      final spotifyService = context.read<SpotifyService>();
+      final tracks = await spotifyService.getArtistTopTracks(widget.artist.id);
+      if (mounted) {
+        setState(() {
+          _topTracks = tracks;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading top tracks for ${widget.artist.name}: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override

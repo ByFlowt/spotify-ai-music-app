@@ -115,6 +115,41 @@ class _HomePageState extends State<HomePage> {
     final isAuthenticated = authService.isAuthenticated;
 
     return Scaffold(
+      appBar: isAuthenticated ? AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Logout'),
+                    content: const Text('Are you sure you want to logout?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Logout'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true && context.mounted) {
+                  await authService.logout();
+                }
+              },
+              icon: const Icon(Icons.logout_rounded),
+              tooltip: 'Logout',
+            ),
+          ),
+        ],
+      ) : null,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadPersonalizedContent,

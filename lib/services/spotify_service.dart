@@ -134,51 +134,66 @@ class SpotifyService extends ChangeNotifier {
 
       // Try multiple markets to find previews
       // Markets are ordered by preview availability (US usually has best availability)
-      final markets = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'ES', 'SE', 'BR', 'MX'];
+      final markets = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'ES', 'SE', 'BR', 'MX', 'NL'];
       List<Track> bestTracks = [];
       int maxPreviewCount = 0;
       
       // Try first few markets and pick the one with most previews
-      for (var market in markets.take(5)) {
-        final response = await http.get(
-          Uri.parse(
-            'https://api.spotify.com/v1/artists/$artistId/top-tracks?market=$market',
-          ),
-          headers: {
-            'Authorization': 'Bearer $_accessToken',
-          },
-        );
+      for (var market in markets.take(7)) {
+        try {
+          final response = await http.get(
+            Uri.parse(
+              'https://api.spotify.com/v1/artists/$artistId/top-tracks?market=$market',
+            ),
+            headers: {
+              'Authorization': 'Bearer $_accessToken',
+            },
+          );
 
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          final tracksJson = data['tracks'] as List;
-          final tracks = tracksJson.map((json) => Track.fromJson(json)).toList();
-          
-          // Count tracks with previews
-          final previewCount = tracks.where((t) => t.previewUrl != null).length;
-          
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            final tracksJson = data['tracks'] as List;
+            final tracks = tracksJson.map((json) => Track.fromJson(json)).toList();
+            
+            // Count tracks with previews
+            final previewCount = tracks.where((t) => t.previewUrl != null).length;
+            
+            if (kDebugMode) {
+              print('Artist $artistId - Market $market: $previewCount/${tracks.length} tracks with previews');
+            }
+            
+            // Keep the best result so far (even if no previews)
+            if (tracks.isNotEmpty && (tracks.length > bestTracks.length || previewCount > maxPreviewCount)) {
+              maxPreviewCount = previewCount;
+              bestTracks = tracks;
+            }
+            
+            // If we have previews for most tracks, stop searching
+            if (previewCount >= 7) {
+              break;
+            }
+          } else if (response.statusCode == 401) {
+            _accessToken = null;
+            await _getAccessToken();
+            return getArtistTopTracks(artistId);
+          } else {
+            if (kDebugMode) {
+              print('Market $market failed with status ${response.statusCode}');
+            }
+          }
+        } catch (marketError) {
           if (kDebugMode) {
-            print('Market $market: $previewCount/${tracks.length} tracks with previews');
+            print('Error trying market $market: $marketError');
           }
-          
-          // Keep the best result so far
-          if (previewCount > maxPreviewCount) {
-            maxPreviewCount = previewCount;
-            bestTracks = tracks;
-          }
-          
-          // If we have previews for most tracks, stop searching
-          if (previewCount >= 7) {
-            break;
-          }
-        } else if (response.statusCode == 401) {
-          _accessToken = null;
-          await _getAccessToken();
-          return getArtistTopTracks(artistId);
+          // Continue to next market
         }
         
         // Small delay to avoid rate limiting
         await Future.delayed(const Duration(milliseconds: 100));
+      }
+      
+      if (kDebugMode) {
+        print('Final result for artist $artistId: ${bestTracks.length} tracks');
       }
       
       _isLoading = false;
@@ -188,6 +203,9 @@ class SpotifyService extends ChangeNotifier {
       _error = 'Error loading tracks: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
+      if (kDebugMode) {
+        print('Error in getArtistTopTracks: $e');
+      }
       return [];
     }
   }
@@ -294,7 +312,15 @@ class SpotifyService extends ChangeNotifier {
         params['seed_tracks'] = seedTracks.take(2).join(',');
       }
       if (seedGenres != null && seedGenres.isNotEmpty) {
-        params['seed_genres'] = seedGenres.take(1).join(',');
+        // Clean genre names - remove any special characters that might cause issues
+        final cleanGenres = seedGenres
+            .take(1)
+            .map((g) => g.toLowerCase().replaceAll(RegExp(r'[^a-z0-9-]'), ''))
+            .where((g) => g.isNotEmpty)
+            .toList();
+        if (cleanGenres.isNotEmpty) {
+          params['seed_genres'] = cleanGenres.join(',');
+        }
       }
 
       final uri = Uri.https(
@@ -302,6 +328,10 @@ class SpotifyService extends ChangeNotifier {
         '/v1/recommendations',
         params,
       );
+      
+      if (kDebugMode) {
+        print('Recommendations URL: $uri');
+      }
 
       final response = await http.get(
         uri,
