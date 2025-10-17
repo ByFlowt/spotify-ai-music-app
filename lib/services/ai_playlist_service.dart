@@ -7,6 +7,12 @@ import 'playlist_manager.dart';
 import 'spotify_auth_service.dart';
 import 'gemini_ai_service.dart';
 
+// Helper to force logging in production
+void _log(String message) {
+  // ignore: avoid_print
+  print(message);
+}
+
 class AIPlaylistService extends ChangeNotifier {
   final SpotifyService _spotifyService;
   final PlaylistManager _playlistManager;
@@ -89,12 +95,10 @@ class AIPlaylistService extends ChangeNotifier {
     _progress = 0.0;
     notifyListeners();
 
-    if (kDebugMode) {
-      print('═══════════════════════════════════════════════');
-      print('🎵 Starting AI Playlist Generation');
-      print('📊 Target: $targetSize tracks | Mood: $mood');
-      print('═══════════════════════════════════════════════');
-    }
+    _log('═══════════════════════════════════════════════');
+    _log('🎵 Starting AI Playlist Generation');
+    _log('📊 Target: $targetSize tracks | Mood: $mood');
+    _log('═══════════════════════════════════════════════');
 
     try {
       // Step 1: Get user's listening data from Spotify
@@ -102,25 +106,19 @@ class AIPlaylistService extends ChangeNotifier {
       _progress = 0.1;
       notifyListeners();
       
-      if (kDebugMode) {
-        print('📥 Step 1: Fetching user listening data from Spotify...');
-      }
+      _log('📥 Step 1: Fetching user listening data from Spotify...');
       
       final userData = await _getUserListeningData();
       
       if (userData == null) {
-        if (kDebugMode) {
-          print('❌ Failed to load user data - user not authenticated');
-        }
+        _log('❌ Failed to load user data - user not authenticated');
         throw Exception('Unable to load your listening history. Please log in.');
       }
       
-      if (kDebugMode) {
-        print('✅ User data loaded successfully');
-        print('   - Top tracks: ${(userData['topTracks'] as List?)?.length ?? 0}');
-        print('   - Top artists: ${(userData['topArtists'] as List?)?.length ?? 0}');
-        print('   - Recent tracks: ${(userData['recentTracks'] as List?)?.length ?? 0}');
-      }
+      _log('✅ User data loaded successfully');
+      _log('   - Top tracks: ${(userData['topTracks'] as List?)?.length ?? 0}');
+      _log('   - Top artists: ${(userData['topArtists'] as List?)?.length ?? 0}');
+      _log('   - Recent tracks: ${(userData['recentTracks'] as List?)?.length ?? 0}');
       
       // Step 2: Ask Gemini AI for song recommendations
       _currentStep = 'Asking Gemini AI for recommendations...';
@@ -128,9 +126,7 @@ class AIPlaylistService extends ChangeNotifier {
       notifyListeners();
       await Future.delayed(const Duration(milliseconds: 500));
       
-      if (kDebugMode) {
-        print('🤖 Step 2: Requesting recommendations from Gemini AI...');
-      }
+      _log('🤖 Step 2: Requesting recommendations from Gemini AI...');
       
       final geminiRecommendations = await _geminiService.generateSongRecommendations(
         topTracks: userData['topTracks'] as List<Map<String, dynamic>>,
@@ -140,9 +136,7 @@ class AIPlaylistService extends ChangeNotifier {
         targetCount: targetSize,
       );
       
-      if (kDebugMode) {
-        print('✅ Received ${geminiRecommendations.length} recommendations');
-      }
+      _log('✅ Received ${geminiRecommendations.length} recommendations');
       
       // If Gemini hit rate limits, we'll get fallback recommendations
       if (geminiRecommendations.isEmpty) {
@@ -154,9 +148,7 @@ class AIPlaylistService extends ChangeNotifier {
       _progress = 0.5;
       notifyListeners();
       
-      if (kDebugMode) {
-        print('🔍 Searching Spotify for ${geminiRecommendations.length} recommendations...');
-      }
+      _log('🔍 Searching Spotify for ${geminiRecommendations.length} recommendations...');
       
       final foundTracks = <Track>[];
       int searchedCount = 0;
@@ -172,9 +164,7 @@ class AIPlaylistService extends ChangeNotifier {
           // Search Spotify for this song
           final query = '${recommendation['title']} ${recommendation['artist']}';
           
-          if (kDebugMode) {
-            print('🔍 [$searchedCount/${geminiRecommendations.length}] Searching: $query');
-          }
+          _log('🔍 [$searchedCount/${geminiRecommendations.length}] Searching: $query');
           
           final searchResults = await _spotifyService.searchTracks(query, market: 'NL');
           
@@ -182,28 +172,20 @@ class AIPlaylistService extends ChangeNotifier {
             // Take the first (best) match
             foundTracks.add(searchResults.first);
             
-            if (kDebugMode) {
-              print('✅ Found: ${searchResults.first.name} by ${searchResults.first.artistName}');
-            }
+            _log('✅ Found: ${searchResults.first.name} by ${searchResults.first.artistName}');
           } else {
-            if (kDebugMode) {
-              print('❌ Not found: ${recommendation['title']} by ${recommendation['artist']}');
-            }
+            _log('❌ Not found: ${recommendation['title']} by ${recommendation['artist']}');
           }
           
           // Don't spam Spotify API
           await Future.delayed(const Duration(milliseconds: 100));
           
         } catch (e) {
-          if (kDebugMode) {
-            print('⚠️  Error searching for ${recommendation['title']}: $e');
-          }
+          _log('⚠️  Error searching for ${recommendation['title']}: $e');
         }
       }
       
-      if (kDebugMode) {
-        print('📊 Step 3 Complete: Found ${foundTracks.length}/${geminiRecommendations.length} tracks on Spotify');
-      }
+      _log('📊 Step 3 Complete: Found ${foundTracks.length}/${geminiRecommendations.length} tracks on Spotify');
       
       // Step 4: Remove duplicates and filter
       _currentStep = 'Removing duplicates...';
@@ -211,15 +193,11 @@ class AIPlaylistService extends ChangeNotifier {
       notifyListeners();
       await Future.delayed(const Duration(milliseconds: 300));
       
-      if (kDebugMode) {
-        print('🔄 Step 4: Removing duplicates and filtering...');
-      }
+      _log('🔄 Step 4: Removing duplicates and filtering...');
       
       _generatedTracks = _removeDuplicates(foundTracks);
       
-      if (kDebugMode) {
-        print('   After deduplication: ${_generatedTracks.length} unique tracks');
-      }
+      _log('   After deduplication: ${_generatedTracks.length} unique tracks');
       
       // Step 5: Optimize track order
       _currentStep = 'Optimizing playlist flow...';
@@ -227,9 +205,7 @@ class AIPlaylistService extends ChangeNotifier {
       notifyListeners();
       await Future.delayed(const Duration(milliseconds: 300));
       
-      if (kDebugMode) {
-        print('🎼 Step 5: Optimizing track order...');
-      }
+      _log('🎼 Step 5: Optimizing track order...');
       
       _generatedTracks = _optimizeTrackOrder(_generatedTracks);
       
@@ -238,22 +214,18 @@ class AIPlaylistService extends ChangeNotifier {
       _isGenerating = false;
       notifyListeners();
       
-      if (kDebugMode) {
-        print('═══════════════════════════════════════════════');
+      _log('═══════════════════════════════════════════════');
         print('✅ AI Playlist Generation Complete!');
         print('🎵 Final playlist: ${_generatedTracks.length} tracks');
         print('═══════════════════════════════════════════════');
-      }
       
       return _generatedTracks;
       
     } catch (e) {
-      if (kDebugMode) {
-        print('═══════════════════════════════════════════════');
+      _log('═══════════════════════════════════════════════');
         print('❌ ERROR: AI Playlist Generation Failed');
         print('Error details: $e');
         print('═══════════════════════════════════════════════');
-      }
       _currentStep = 'Error: Failed to generate playlist';
       _isGenerating = false;
       _progress = 0.0;
@@ -267,9 +239,7 @@ class AIPlaylistService extends ChangeNotifier {
     try {
       final userToken = _authService.accessToken;
       if (userToken == null || !_authService.isAuthenticated) {
-        if (kDebugMode) {
-          print('⚠️  User not authenticated');
-        }
+        _log('⚠️  User not authenticated');
         return null;
       }
       
@@ -315,9 +285,7 @@ class AIPlaylistService extends ChangeNotifier {
       };
       
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error fetching user listening data: $e');
-      }
+      _log('❌ Error fetching user listening data: $e');
       return null;
     }
   }
@@ -407,10 +375,8 @@ class AIPlaylistService extends ChangeNotifier {
               .take(2)
               .toList();
           
-          if (kDebugMode) {
-            print('Artist genres: $artistGenres');
+          _log('Artist genres: $artistGenres');
             print('Mapped to valid genres: $topGenres');
-          }
           
           return {
             'genres': topGenres.isNotEmpty ? topGenres : _getDefaultGenres(),
@@ -420,9 +386,7 @@ class AIPlaylistService extends ChangeNotifier {
         }
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Could not fetch user data, using fallback: $e');
-      }
+      _log('Could not fetch user data, using fallback: $e');
     }
     
     // Fallback to simulated data
