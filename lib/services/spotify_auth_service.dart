@@ -7,6 +7,7 @@ import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
+import 'api_proxy_service.dart';
 
 // Helper function for web console logging
 void _log(String message) {
@@ -344,36 +345,49 @@ class SpotifyAuthService extends ChangeNotifier {
   Future<void> _exchangeCodeForTokens(String code, String codeVerifier) async {
     _log('🔐 [AUTH] Exchanging authorization code for tokens...');
     
-    final clientId = ApiConfig.spotifyClientId;
-    final clientSecret = ApiConfig.spotifyClientSecret;
-    
-    // Build request body - PKCE flow doesn't require client_secret
-    final Map<String, String> requestBody = {
-      'grant_type': 'authorization_code',
-      'code': code,
-      'redirect_uri': redirectUri,
-      'client_id': clientId,
-      'code_verifier': codeVerifier,
-    };
-    
-    // Only add client_secret if it's available (native platforms)
-    // Web uses PKCE which doesn't require client_secret
-    if (clientSecret.isNotEmpty && !kIsWeb) {
-      requestBody['client_secret'] = clientSecret;
-      _log('🔐 [AUTH] Using client secret (native platform)');
-    } else {
-      _log('🔐 [AUTH] Using PKCE only (web platform)');
-    }
-    
-    final response = await http.post(
-      Uri.parse('https://accounts.spotify.com/api/token'),
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: requestBody,
-    );
-    
-    if (response.statusCode == 200) {
+    try {
+      Map<String, dynamic> data;
+      
+      if (kIsWeb) {
+        // Use backend proxy for web to keep client_secret secure
+        _log('🔐 [AUTH] Using backend proxy for token exchange (web platform)');
+        data = await ApiProxyService.exchangeSpotifyCode(
+          code: code,
+          redirectUri: redirectUri,
+          codeVerifier: codeVerifier,
+        );
+      } else {
+        // Direct API call for native platforms
+        _log('🔐 [AUTH] Using direct API call for token exchange (native platform)');
+        
+        final clientId = ApiConfig.spotifyClientId;
+        final clientSecret = ApiConfig.spotifyClientSecret;
+        
+        final requestBody = {
+          'grant_type': 'authorization_code',
+          'code': code,
+          'redirect_uri': redirectUri,
+          'client_id': clientId,
+          'client_secret': clientSecret,
+          'code_verifier': codeVerifier,
+        };
+        
+        final response = await http.post(
+          Uri.parse('https://accounts.spotify.com/api/token'),
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: requestBody,
+        );
+        
+        if (response.statusCode == 200) {
+          data = jsonDecode(response.body);
+        } else {
+          _logError('❌ [AUTH] Token exchange failed: ${response.statusCode}');
+          _logError('❌ [AUTH] Response: ${response.body}');
+          throw Exception('Token exchange failed: ${response.body}');
+        }
+      }
+      
       _log('✅ [AUTH] Token exchange successful');
-      final data = jsonDecode(response.body);
       _accessToken = data['access_token'];
       _refreshToken = data['refresh_token'];
       _tokenExpiry = DateTime.now().add(Duration(seconds: data['expires_in']));
@@ -386,10 +400,9 @@ class SpotifyAuthService extends ChangeNotifier {
       await _storage.write(key: 'spotify_token_expiry', value: _tokenExpiry!.toIso8601String());
       
       _log('✅ [AUTH] Tokens stored successfully');
-    } else {
-      _logError('❌ [AUTH] Token exchange failed: ${response.statusCode}');
-      _logError('❌ [AUTH] Response: ${response.body}');
-      throw Exception('Token exchange failed: ${response.body}');
+    } catch (e) {
+      _logError('❌ [AUTH] Token exchange error: $e');
+      throw Exception('Token exchange failed: $e');
     }
   }
   
@@ -406,46 +419,55 @@ class SpotifyAuthService extends ChangeNotifier {
     _log('🔐 [AUTH] Refreshing access token...');
     
     try {
-      final clientId = ApiConfig.spotifyClientId;
-      final clientSecret = ApiConfig.spotifyClientSecret;
+      Map<String, dynamic> data;
       
-      // Build request body
-      final Map<String, String> requestBody = {
-        'grant_type': 'refresh_token',
-        'refresh_token': _refreshToken!,
-        'client_id': clientId,
-      };
-      
-      // Only add client_secret if available (native platforms)
-      if (clientSecret.isNotEmpty && !kIsWeb) {
-        requestBody['client_secret'] = clientSecret;
-      }
-      
-      final response = await http.post(
-        Uri.parse('https://accounts.spotify.com/api/token'),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: requestBody,
-      );
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _accessToken = data['access_token'];
-        _tokenExpiry = DateTime.now().add(Duration(seconds: data['expires_in']));
-        
-        // Update refresh token if provided
-        if (data['refresh_token'] != null) {
-          _refreshToken = data['refresh_token'];
-          await _storage.write(key: 'spotify_refresh_token', value: _refreshToken);
-        }
-        
-        await _storage.write(key: 'spotify_access_token', value: _accessToken);
-        await _storage.write(key: 'spotify_token_expiry', value: _tokenExpiry!.toIso8601String());
-        
-        _log('✅ [AUTH] Token refreshed successfully');
+      if (kIsWeb) {
+        // Use backend proxy for web to keep client_secret secure
+        _log('🔐 [AUTH] Using backend proxy for token refresh (web platform)');
+        data = await ApiProxyService.refreshSpotifyToken(
+          refreshToken: _refreshToken!,
+        );
       } else {
-        _logError('❌ [AUTH] Token refresh failed: ${response.statusCode}');
-        throw Exception('Token refresh failed');
+        // Direct API call for native platforms
+        _log('🔐 [AUTH] Using direct API call for token refresh (native platform)');
+        
+        final clientId = ApiConfig.spotifyClientId;
+        final clientSecret = ApiConfig.spotifyClientSecret;
+        
+        final requestBody = {
+          'grant_type': 'refresh_token',
+          'refresh_token': _refreshToken!,
+          'client_id': clientId,
+          'client_secret': clientSecret,
+        };
+        
+        final response = await http.post(
+          Uri.parse('https://accounts.spotify.com/api/token'),
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: requestBody,
+        );
+        
+        if (response.statusCode == 200) {
+          data = jsonDecode(response.body);
+        } else {
+          _logError('❌ [AUTH] Token refresh failed: ${response.statusCode}');
+          throw Exception('Token refresh failed');
+        }
       }
+      
+      _accessToken = data['access_token'];
+      _tokenExpiry = DateTime.now().add(Duration(seconds: data['expires_in']));
+      
+      // Update refresh token if provided
+      if (data['refresh_token'] != null) {
+        _refreshToken = data['refresh_token'];
+        await _storage.write(key: 'spotify_refresh_token', value: _refreshToken);
+      }
+      
+      await _storage.write(key: 'spotify_access_token', value: _accessToken);
+      await _storage.write(key: 'spotify_token_expiry', value: _tokenExpiry!.toIso8601String());
+      
+      _log('✅ [AUTH] Token refreshed successfully');
     } catch (e) {
       _logError('❌ [AUTH] Error refreshing token: $e');
       _isAuthenticated = false;

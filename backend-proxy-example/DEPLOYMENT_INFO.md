@@ -15,12 +15,15 @@ Add these environment variables:
 |---------------|-------|
 | `GEMINI_API_KEY` | Your Google Gemini API key |
 | `AUDD_API_KEY` | Your AUDD.io API key |
-| `SPOTIFY_CLIENT_SECRET` | Your Spotify Client Secret (optional) |
+| `SPOTIFY_CLIENT_ID` | Your Spotify Client ID |
+| `SPOTIFY_CLIENT_SECRET` | **REQUIRED** - Your Spotify Client Secret |
 
 **Important:** After adding variables, you need to redeploy:
 ```bash
 vercel --prod
 ```
+
+**Note:** The `SPOTIFY_CLIENT_SECRET` is **required** for the proxy to work. The backend proxy securely handles Spotify OAuth token exchange and refresh operations that require the client secret, keeping it safe from the frontend code.
 
 ### 2. Update Your Flutter App
 
@@ -72,6 +75,33 @@ vercel rm backend_proxy
 From your `.env` file:
 - ✅ GEMINI_API_KEY=AIzaSyDaKqVBlnGR6UXq5XQjxo7mJDfgVZ9t0NU
 - ✅ AUDD_API_KEY=3cb567377b824e96657c208fcf07d2bf
-- ⚠️ SPOTIFY_CLIENT_SECRET=2eb0d963befb41f0998ddd703c8a8b7a (optional)
+- ✅ SPOTIFY_CLIENT_ID=ce1797970d2d4ec8852fa68a54fe8a8f
+- ⚠️ **SPOTIFY_CLIENT_SECRET=2eb0d963befb41f0998ddd703c8a8b7a** (REQUIRED - don't skip this!)
 
 **Remember:** Don't commit these values to git!
+
+## New Endpoint: Spotify Token Management
+
+The proxy now includes `/api/spotify-token` endpoint for secure OAuth operations:
+
+**Token Exchange (after OAuth login):**
+```bash
+curl -X POST https://backendproxy-edfpf6fnh-byflowt-prod-tests-projects.vercel.app/api/spotify-token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "authorization_code",
+    "code": "AUTH_CODE_FROM_SPOTIFY",
+    "redirect_uri": "https://byflowt.github.io/spotify-ai-music-app/",
+    "code_verifier": "PKCE_CODE_VERIFIER"
+  }'
+```
+
+**Token Refresh:**
+```bash
+curl -X POST https://backendproxy-edfpf6fnh-byflowt-prod-tests-projects.vercel.app/api/spotify-token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "refresh_token",
+    "refresh_token": "USER_REFRESH_TOKEN"
+  }'
+```

@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 /// Secure API Proxy Service
 /// Routes API calls through a backend proxy when on web to hide API keys
 class ApiProxyService {
-  // Your Vercel deployment URL
-  static const String _vercelProxyUrl = 'backendproxy-c00tq4fon-byflowt-prod-tests-projects.vercel.app';
+  // Your Vercel deployment URL (without https://)
+  static const String _vercelProxyUrl = 'backendproxy-edfpf6fnh-byflowt-prod-tests-projects.vercel.app';
   
   // For local development
   static const String _localProxyUrl = 'http://localhost:3000';
@@ -16,7 +16,7 @@ class ApiProxyService {
     // In production web build, use Vercel
     // In development or native, use local or direct API calls
     if (kIsWeb && const bool.fromEnvironment('dart.vm.product')) {
-      return _vercelProxyUrl;
+      return 'https://$_vercelProxyUrl';
     }
     return _localProxyUrl;
   }
@@ -87,6 +87,80 @@ class ApiProxyService {
       }
     } catch (e) {
       throw Exception('Failed to recognize audio: $e');
+    }
+  }
+
+  /// Exchange Spotify authorization code for tokens through proxy
+  /// 
+  /// Example:
+  /// ```dart
+  /// final tokens = await ApiProxyService.exchangeSpotifyCode(
+  ///   code: authCode,
+  ///   redirectUri: 'https://byflowt.github.io/spotify-ai-music-app/',
+  ///   codeVerifier: pkceVerifier,
+  /// );
+  /// ```
+  static Future<Map<String, dynamic>> exchangeSpotifyCode({
+    required String code,
+    required String redirectUri,
+    required String codeVerifier,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://$_vercelProxyUrl/api/spotify-token'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'grant_type': 'authorization_code',
+          'code': code,
+          'redirect_uri': redirectUri,
+          'code_verifier': codeVerifier,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception('Spotify token exchange error: ${error['error'] ?? response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to exchange Spotify code: $e');
+    }
+  }
+
+  /// Refresh Spotify access token through proxy
+  /// 
+  /// Example:
+  /// ```dart
+  /// final newTokens = await ApiProxyService.refreshSpotifyToken(
+  ///   refreshToken: userRefreshToken,
+  /// );
+  /// ```
+  static Future<Map<String, dynamic>> refreshSpotifyToken({
+    required String refreshToken,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://$_vercelProxyUrl/api/spotify-token'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'grant_type': 'refresh_token',
+          'refresh_token': refreshToken,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception('Spotify token refresh error: ${error['error'] ?? response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to refresh Spotify token: $e');
     }
   }
 
