@@ -69,7 +69,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
           // Expressive shapes with more rounded corners
-          cardTheme: CardTheme(
+          cardTheme: CardThemeData(
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28),
@@ -139,7 +139,7 @@ class MyApp extends StatelessWidget {
               color: Colors.white70,
             ),
           ),
-          cardTheme: CardTheme(
+          cardTheme: CardThemeData(
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28),
