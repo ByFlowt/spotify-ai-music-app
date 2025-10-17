@@ -119,19 +119,33 @@ class SpotifyAuthService extends ChangeNotifier {
         final fragmentParams = Uri.splitQueryString(uri.fragment);
         accessToken = fragmentParams['access_token'];
         expiresIn = int.tryParse(fragmentParams['expires_in'] ?? '3600');
+        
+        // Also check for error in fragment
+        final error = fragmentParams['error'];
+        if (error != null) {
+          throw Exception('Spotify authentication error: $error');
+        }
       }
       
       // Also try query params (in case it's in the query instead of fragment)
       if (accessToken == null && uri.queryParameters.isNotEmpty) {
         accessToken = uri.queryParameters['access_token'];
         expiresIn = int.tryParse(uri.queryParameters['expires_in'] ?? '3600');
+        
+        // Also check for error in query params
+        final error = uri.queryParameters['error'];
+        if (error != null) {
+          throw Exception('Spotify authentication error: $error');
+        }
       }
       
-      if (accessToken == null) {
+      if (accessToken == null || accessToken.isEmpty) {
         if (kDebugMode) {
           print('Failed to extract token from URL: $result');
+          print('URI fragment: ${uri.fragment}');
+          print('URI query: ${uri.query}');
         }
-        throw Exception('No access token received from Spotify');
+        throw Exception('No access token received from Spotify. Please try again.');
       }
       
       if (kDebugMode) {
@@ -152,16 +166,28 @@ class SpotifyAuthService extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       
+      if (kDebugMode) {
+        print('Login successful! User: ${_userProfile?['display_name']}');
+      }
+      
       return true;
     } catch (e) {
-      _error = 'Login failed: ${e.toString()}';
+      // Check if user cancelled the login
+      if (e.toString().contains('CANCELED') || e.toString().contains('User cancelled')) {
+        _error = null; // Don't show error if user cancelled
+        if (kDebugMode) {
+          print('Login cancelled by user');
+        }
+      } else {
+        _error = 'Login failed: ${e.toString()}';
+        if (kDebugMode) {
+          print('Login error: $e');
+        }
+      }
+      
       _isLoading = false;
       _isAuthenticated = false;
       notifyListeners();
-      
-      if (kDebugMode) {
-        print('Login error: $e');
-      }
       
       return false;
     }
@@ -276,9 +302,16 @@ class SpotifyAuthService extends ChangeNotifier {
           await logout();
           return;
         }
-        
-        notifyListeners();
+      } else {
+        // No stored tokens found - user needs to login
+        if (kDebugMode) {
+          print('No stored tokens found');
+        }
+        _isAuthenticated = false;
       }
+      
+      // Always notify listeners when done checking
+      notifyListeners();
     } catch (e) {
       if (kDebugMode) {
         print('Error loading stored tokens: $e');

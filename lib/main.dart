@@ -199,7 +199,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _checkAuth() async {
     // Check for existing auth token when app starts
-    await context.read<SpotifyAuthService>().checkAuthStatus();
+    final authService = context.read<SpotifyAuthService>();
+    await authService.checkAuthStatus();
     
     // Done checking
     if (mounted) {
