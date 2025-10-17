@@ -5,13 +5,13 @@ import 'dart:convert';
 class GeminiAIService {
   // Get your free Gemini API key from: https://makersuite.google.com/app/apikey
   // No cost - Gemini 2.0 Flash is free with generous limits!
-  static const String apiKey = 'YOUR_GEMINI_API_KEY_HERE';
+  static const String apiKey = 'AIzaSyDaKqVBlnGR6UXq5XQjxo7mJDfgVZ9t0NU';
   
   late final GenerativeModel _model;
   
   GeminiAIService() {
     _model = GenerativeModel(
-      model: 'gemini-2.0-flash-exp',  // Latest free model!
+      model: 'gemini-2.5-flash',  // Latest free model!
       apiKey: apiKey,
       generationConfig: GenerationConfig(
         temperature: 0.9,  // More creative
@@ -194,5 +194,151 @@ Make it personal and exciting. No quotes or titles, just the description text.
     } catch (e) {
       return 'Your personalized $mood playlist with $trackCount carefully selected tracks.';
     }
+  }
+  
+  // Generate specific song recommendations based on listening history
+  Future<List<Map<String, String>>> generateSongRecommendations({
+    required List<Map<String, dynamic>> topTracks,
+    required List<Map<String, dynamic>> topArtists,
+    required List<Map<String, dynamic>> recentTracks,
+    required String mood,
+    int targetCount = 30,
+  }) async {
+    try {
+      // Build context for Gemini
+      final topTracksList = topTracks.take(10).map((t) => '${t['name']} by ${t['artist']}').join('\n');
+      final topArtistsList = topArtists.take(10).map((a) => a['name']).join(', ');
+      final recentTracksList = recentTracks.take(5).map((t) => '${t['name']} by ${t['artist']}').join('\n');
+      
+      final prompt = '''
+You are an expert music curator. Based on this user's Spotify listening history, recommend exactly $targetCount songs that match their taste and the "$mood" mood.
+
+USER'S TOP TRACKS:
+$topTracksList
+
+TOP ARTISTS: $topArtistsList
+
+RECENTLY PLAYED:
+$recentTracksList
+
+REQUESTED MOOD: $mood
+
+Generate $targetCount song recommendations that:
+1. Match their music taste and preferred genres
+2. Fit the "$mood" mood perfectly
+3. Include a mix of popular and lesser-known tracks
+4. Are real, existing songs that can be found on Spotify
+
+Respond with a JSON array of objects with "title" and "artist" fields. Format:
+[
+  {"title": "Song Name", "artist": "Artist Name"},
+  {"title": "Song Name 2", "artist": "Artist Name 2"}
+]
+
+Respond ONLY with the JSON array, no additional text or markdown.
+''';
+
+      if (kDebugMode) {
+        print('🎵 Asking Gemini for $targetCount song recommendations...');
+      }
+      
+      final content = [Content.text(prompt)];
+      final response = await _model.generateContent(content);
+      
+      if (response.text == null) {
+        throw Exception('No response from Gemini');
+      }
+      
+      if (kDebugMode) {
+        print('📝 Gemini response received, parsing...');
+      }
+      
+      // Parse the recommendations
+      final recommendations = _parseSongRecommendations(response.text!);
+      
+      if (kDebugMode) {
+        print('✅ Got ${recommendations.length} song recommendations from Gemini');
+      }
+      
+      return recommendations;
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error generating song recommendations: $e');
+      }
+      
+      // Fallback: use artists from their top tracks
+      return _generateFallbackRecommendations(topTracks, topArtists, targetCount);
+    }
+  }
+  
+  List<Map<String, String>> _parseSongRecommendations(String response) {
+    try {
+      // Clean up the response
+      String cleaned = response.trim();
+      
+      // Remove markdown code blocks
+      if (cleaned.startsWith('```json')) {
+        cleaned = cleaned.substring(7);
+      }
+      if (cleaned.startsWith('```')) {
+        cleaned = cleaned.substring(3);
+      }
+      if (cleaned.endsWith('```')) {
+        cleaned = cleaned.substring(0, cleaned.length - 3);
+      }
+      
+      cleaned = cleaned.trim();
+      
+      // Parse JSON
+      final List<dynamic> parsed = jsonDecode(cleaned);
+      
+      return parsed.map((item) {
+        return {
+          'title': item['title']?.toString() ?? '',
+          'artist': item['artist']?.toString() ?? '',
+        };
+      }).where((item) => item['title']!.isNotEmpty && item['artist']!.isNotEmpty).toList();
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error parsing song recommendations: $e');
+        print('Response was: $response');
+      }
+      return [];
+    }
+  }
+  
+  List<Map<String, String>> _generateFallbackRecommendations(
+    List<Map<String, dynamic>> topTracks,
+    List<Map<String, dynamic>> topArtists,
+    int count,
+  ) {
+    if (kDebugMode) {
+      print('⚠️ Using fallback recommendations based on user\'s top tracks');
+    }
+    
+    // Use similar tracks from their favorites
+    final recommendations = <Map<String, String>>[];
+    
+    // Add top tracks as base
+    for (var track in topTracks.take(count ~/ 2)) {
+      recommendations.add({
+        'title': track['name'].toString(),
+        'artist': track['artist'].toString(),
+      });
+    }
+    
+    // Fill remaining with generic searches based on their artists
+    final artists = topArtists.take(5).map((a) => a['name'].toString()).toList();
+    for (var i = recommendations.length; i < count && i < artists.length * 2; i++) {
+      final artist = artists[i % artists.length];
+      recommendations.add({
+        'title': 'top songs',  // Will search for top songs by this artist
+        'artist': artist,
+      });
+    }
+    
+    return recommendations.take(count).toList();
   }
 }

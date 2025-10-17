@@ -1,14 +1,17 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../models/track_model.dart';
+import '../models/artist_model.dart';
 import 'spotify_service.dart';
 import 'playlist_manager.dart';
 import 'spotify_auth_service.dart';
+import 'gemini_ai_service.dart';
 
 class AIPlaylistService extends ChangeNotifier {
   final SpotifyService _spotifyService;
   final PlaylistManager _playlistManager;
   final SpotifyAuthService _authService;
+  final GeminiAIService _geminiService;
   
   bool _isGenerating = false;
   double _progress = 0.0;
@@ -22,7 +25,12 @@ class AIPlaylistService extends ChangeNotifier {
   List<Track> get generatedTracks => _generatedTracks;
   Map<String, double> get genrePreferences => _genrePreferences;
 
-  AIPlaylistService(this._spotifyService, this._playlistManager, this._authService);
+  AIPlaylistService(
+    this._spotifyService,
+    this._playlistManager,
+    this._authService,
+    this._geminiService,
+  );
 
   // Simulate listening history analysis (in production, use real user data)
   Future<Map<String, dynamic>> analyzeListeningHistory() async {
@@ -70,7 +78,7 @@ class AIPlaylistService extends ChangeNotifier {
     };
   }
 
-  // AI-powered smart playlist generation
+  // AI-powered smart playlist generation using Gemini AI
   Future<List<Track>> generateSmartPlaylist({
     int targetSize = 30,
     String mood = 'balanced',
@@ -82,63 +90,94 @@ class AIPlaylistService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Step 1: Analyze listening history
-      final analysis = await analyzeListeningHistory();
-      
-      // Step 2: Determine mood parameters
-      _currentStep = 'Understanding your mood preferences...';
-      _progress = 0.3;
-      notifyListeners();
-      await Future.delayed(const Duration(milliseconds: 600));
-      
-      final moodParams = _getMoodParameters(mood);
-      
-      // Step 3: Get seed data
-      _currentStep = 'Finding the perfect seeds...';
-      _progress = 0.4;
+      // Step 1: Get user's listening data from Spotify
+      _currentStep = 'Analyzing your music taste...';
+      _progress = 0.1;
       notifyListeners();
       
-      final seeds = await _getSeedData(analysis);
+      final userData = await _getUserListeningData();
       
-      // Step 4: Generate recommendations in batches
-      _currentStep = 'Generating personalized recommendations...';
-      final allTracks = <Track>[];
-      
-      // Get multiple batches for variety
-      for (int i = 0; i < 3; i++) {
-        _progress = 0.4 + (i * 0.15);
-        notifyListeners();
-        
-        final batch = await _spotifyService.getRecommendations(
-          seedArtists: seeds['artists'] as List<String>?,
-          seedTracks: seeds['tracks'] as List<String>?,
-          seedGenres: seeds['genres'] as List<String>?,
-          limit: 20,
-          market: 'NL', // Netherlands market for better EU content
-        );
-        
-        allTracks.addAll(batch);
-        await Future.delayed(const Duration(milliseconds: 400));
+      if (userData == null) {
+        throw Exception('Unable to load your listening history. Please log in.');
       }
       
-      // Step 5: AI-powered track selection
-      _currentStep = 'Applying AI algorithms...';
-      _progress = 0.85;
-      notifyListeners();
-      await Future.delayed(const Duration(milliseconds: 800));
-      
-      _generatedTracks = _selectBestTracks(
-        allTracks,
-        targetSize,
-        moodParams,
-        includeNewDiscoveries,
-      );
-      
-      // Step 6: Optimize track order
-      _currentStep = 'Optimizing playlist flow...';
-      _progress = 0.95;
+      // Step 2: Ask Gemini AI for song recommendations
+      _currentStep = 'Asking AI for personalized recommendations...';
+      _progress = 0.3;
       notifyListeners();
       await Future.delayed(const Duration(milliseconds: 500));
+      
+      if (kDebugMode) {
+        print('🤖 Sending listening data to Gemini AI...');
+      }
+      
+      final geminiRecommendations = await _geminiService.generateSongRecommendations(
+        topTracks: userData['topTracks'] as List<Map<String, dynamic>>,
+        topArtists: userData['topArtists'] as List<Map<String, dynamic>>,
+        recentTracks: userData['recentTracks'] as List<Map<String, dynamic>>,
+        mood: mood,
+        targetCount: targetSize,
+      );
+      
+      if (kDebugMode) {
+        print('✅ Gemini returned ${geminiRecommendations.length} recommendations');
+      }
+      
+      // Step 3: Search Spotify for each Gemini recommendation
+      _currentStep = 'Finding songs on Spotify...';
+      _progress = 0.5;
+      notifyListeners();
+      
+      final foundTracks = <Track>[];
+      int searchedCount = 0;
+      
+      for (final recommendation in geminiRecommendations) {
+        try {
+          // Update progress
+          searchedCount++;
+          _progress = 0.5 + (searchedCount / geminiRecommendations.length * 0.4);
+          notifyListeners();
+          
+          // Search Spotify for this song
+          final query = '${recommendation['title']} ${recommendation['artist']}';
+          final searchResults = await _spotifyService.searchTracks(query, market: 'NL');
+          
+          if (searchResults.isNotEmpty) {
+            // Take the first (best) match
+            foundTracks.add(searchResults.first);
+            
+            if (kDebugMode) {
+              print('✅ Found: ${searchResults.first.name} by ${searchResults.first.artistName}');
+            }
+          } else {
+            if (kDebugMode) {
+              print('❌ Not found: ${recommendation['title']} by ${recommendation['artist']}');
+            }
+          }
+          
+          // Don't spam Spotify API
+          await Future.delayed(const Duration(milliseconds: 100));
+          
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️  Error searching for ${recommendation['title']}: $e');
+          }
+        }
+      }
+      
+      // Step 4: Remove duplicates and filter
+      _currentStep = 'Curating your playlist...';
+      _progress = 0.92;
+      notifyListeners();
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      _generatedTracks = _removeDuplicates(foundTracks);
+      
+      // Step 5: Optimize track order
+      _currentStep = 'Optimizing playlist flow...';
+      _progress = 0.96;
+      notifyListeners();
+      await Future.delayed(const Duration(milliseconds: 300));
       
       _generatedTracks = _optimizeTrackOrder(_generatedTracks);
       
@@ -146,6 +185,10 @@ class AIPlaylistService extends ChangeNotifier {
       _progress = 1.0;
       _isGenerating = false;
       notifyListeners();
+      
+      if (kDebugMode) {
+        print('🎵 Generated playlist with ${_generatedTracks.length} tracks');
+      }
       
       return _generatedTracks;
       
@@ -158,6 +201,83 @@ class AIPlaylistService extends ChangeNotifier {
       notifyListeners();
       return [];
     }
+  }
+
+  // Get user's listening data from Spotify
+  Future<Map<String, List<Map<String, dynamic>>>?> _getUserListeningData() async {
+    try {
+      final userToken = _authService.accessToken;
+      if (userToken == null || !_authService.isAuthenticated) {
+        if (kDebugMode) {
+          print('⚠️  User not authenticated');
+        }
+        return null;
+      }
+      
+      // Fetch user's data in parallel
+      final results = await Future.wait([
+        _spotifyService.getUserTopTracks(
+          userAccessToken: userToken,
+          timeRange: 'medium_term',
+          limit: 20,
+        ),
+        _spotifyService.getUserTopArtists(
+          userAccessToken: userToken,
+          timeRange: 'medium_term',
+          limit: 15,
+        ),
+        _spotifyService.getUserRecentlyPlayed(
+          userAccessToken: userToken,
+          limit: 20,
+        ),
+      ]);
+      
+      final topTracks = results[0] as List<Track>;
+      final topArtists = results[1] as List<Artist>;
+      final recentTracks = results[2] as List<Track>;
+      
+      // Convert to format Gemini expects
+      return {
+        'topTracks': topTracks.map((t) => {
+          'name': t.name,
+          'artist': t.artistName,
+          'id': t.id,
+        }).toList(),
+        'topArtists': topArtists.map((a) => {
+          'name': a.name,
+          'id': a.id,
+          'genres': a.genres,
+        }).toList(),
+        'recentTracks': recentTracks.map((t) => {
+          'name': t.name,
+          'artist': t.artistName,
+          'id': t.id,
+        }).toList(),
+      };
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching user listening data: $e');
+      }
+      return null;
+    }
+  }
+  
+  // Remove duplicate tracks
+  List<Track> _removeDuplicates(List<Track> tracks) {
+    final seen = <String>{};
+    final unique = <Track>[];
+    
+    for (final track in tracks) {
+      if (!seen.contains(track.id)) {
+        seen.add(track.id);
+        unique.add(track);
+      }
+    }
+    
+    // Also remove tracks already in user's playlist
+    final userTrackIds = _playlistManager.playlist.map((t) => t.id).toSet();
+    return unique.where((t) => !userTrackIds.contains(t.id)).toList();
   }
 
   Map<String, dynamic> _getMoodParameters(String mood) {
