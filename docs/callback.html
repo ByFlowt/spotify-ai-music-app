@@ -28,8 +28,8 @@
                     window.opener.postMessage(message, '*');
                     window.close();
                 } else {
-                    // Fallback: redirect to main page with token in URL
-                    window.location.href = '/#access_token=' + accessToken + '&expires_in=' + expiresIn;
+                    // Fallback: redirect to main page with token in URL (project path)
+                    window.location.href = '/spotify-ai-music-app/#access_token=' + accessToken + '&expires_in=' + expiresIn;
                 }
             }
         });
