@@ -3,21 +3,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeService extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
+  bool _isInitialized = false;
   
   ThemeMode get themeMode => _themeMode;
+  bool get isInitialized => _isInitialized;
   
   ThemeService() {
-    _loadThemeMode();
+    _initThemeMode();
   }
   
-  Future<void> _loadThemeMode() async {
+  Future<void> _initThemeMode() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final themeModeString = prefs.getString('themeMode') ?? 'system';
       _themeMode = _themeModeFromString(themeModeString);
+      _isInitialized = true;
       notifyListeners();
     } catch (e) {
-      print('Error loading theme mode: $e');
+      print('⚠️  Error loading theme mode: $e');
+      _isInitialized = true;
+      notifyListeners();
     }
   }
   
@@ -31,7 +36,7 @@ class ThemeService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('themeMode', _themeModeToString(mode));
     } catch (e) {
-      print('Error saving theme mode: $e');
+      print('⚠️  Error saving theme mode: $e');
     }
   }
   
