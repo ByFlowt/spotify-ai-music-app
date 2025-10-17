@@ -16,6 +16,7 @@ class _SearchPageState extends State<SearchPage> {
   List<Artist> _searchResults = [];
   bool _hasSearched = false;
   String _selectedGenre = 'all';
+  bool _showGenreFilter = false; // New state for genre filter expansion
   
   // Genre lists
   final List<Map<String, dynamic>> _aiSuggestedGenres = [
@@ -263,46 +264,127 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   ),
                   
-                  // All Genres Filter Section
+                  // Genres Button (clickable to expand filter)
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.filter_list_rounded,
-                        size: 16,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Filter by Genre',
-                        style: textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurfaceVariant,
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _showGenreFilter = !_showGenreFilter;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _showGenreFilter 
+                              ? colorScheme.primary 
+                              : colorScheme.outlineVariant.withOpacity(0.5),
+                            width: _showGenreFilter ? 2 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.tag_rounded,
+                                size: 20,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Genres',
+                                    style: textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Filter by music style',
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              _showGenreFilter 
+                                ? Icons.expand_less_rounded 
+                                : Icons.expand_more_rounded,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 40,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _allGenres.length,
-                      itemBuilder: (context, index) {
-                        final genre = _allGenres[index];
-                        final isSelected = _selectedGenre == genre['key'];
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: _buildGenreFilterChip(
-                            genre['name'],
-                            genre['icon'],
-                            genre['key'],
-                            isSelected,
-                            colorScheme,
-                          ),
-                        );
-                      },
                     ),
+                  ),
+                  
+                  // Expandable Genre Filter Section
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: _showGenreFilter
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.filter_list_rounded,
+                                  size: 16,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Filter by Genre',
+                                  style: textTheme.labelLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              height: 40,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _allGenres.length,
+                                itemBuilder: (context, index) {
+                                  final genre = _allGenres[index];
+                                  final isSelected = _selectedGenre == genre['key'];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: _buildGenreFilterChip(
+                                      genre['name'],
+                                      genre['icon'],
+                                      genre['key'],
+                                      isSelected,
+                                      colorScheme,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        )
+                      : const SizedBox.shrink(),
                   ),
 
                   const SizedBox(height: 16),

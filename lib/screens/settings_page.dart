@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html;
 import '../services/spotify_auth_service.dart';
 import '../services/theme_service.dart';
 
@@ -11,6 +14,81 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  String? _profileImageBase64;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileImage();
+  }
+
+  Future<void> _loadProfileImage() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _profileImageBase64 = prefs.getString('profile_image');
+    });
+  }
+
+  Future<void> _pickImage() async {
+    if (!kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Image upload is only available in web browsers'),
+        ),
+      );
+      return;
+    }
+
+    // Create file input element
+    final input = html.FileUploadInputElement()..accept = 'image/*';
+    input.click();
+
+    input.onChange.listen((event) async {
+      final file = input.files?.first;
+      if (file != null) {
+        final reader = html.FileReader();
+        reader.readAsDataUrl(file);
+        reader.onLoadEnd.listen((event) async {
+          final String base64String = reader.result as String;
+          
+          // Save to SharedPreferences
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('profile_image', base64String);
+          
+          setState(() {
+            _profileImageBase64 = base64String;
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Profile picture updated!'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        });
+      }
+    });
+  }
+
+  Future<void> _removeProfileImage() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('profile_image');
+    
+    setState(() {
+      _profileImageBase64 = null;
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile picture removed'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -78,6 +156,12 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildSectionTitle('Appearance', colorScheme, textTheme),
                     const SizedBox(height: 12),
                     _buildThemeCard(context, themeService, colorScheme, textTheme),
+                    const SizedBox(height: 24),
+
+                    // Profile Picture Section
+                    _buildSectionTitle('Profile', colorScheme, textTheme),
+                    const SizedBox(height: 12),
+                    _buildProfilePictureCard(colorScheme, textTheme),
                     const SizedBox(height: 24),
 
                     // Account Section
@@ -401,6 +485,106 @@ class _SettingsPageState extends State<SettingsPage> {
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 12),
         ),
+      ),
+    );
+  }
+
+  Widget _buildProfilePictureCard(ColorScheme colorScheme, TextTheme textTheme) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withOpacity(0.5),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Profile Picture Display
+          Stack(
+            children: [
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: colorScheme.primary,
+                    width: 3,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.primary.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: _profileImageBase64 != null
+                      ? Image.network(
+                          _profileImageBase64!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: colorScheme.primaryContainer,
+                              child: Icon(
+                                Icons.person_rounded,
+                                size: 60,
+                                color: colorScheme.onPrimaryContainer,
+                              ),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: colorScheme.primaryContainer,
+                          child: Icon(
+                            Icons.person_rounded,
+                            size: 60,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                ),
+              ),
+              if (_profileImageBase64 != null)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Material(
+                    color: colorScheme.error,
+                    shape: const CircleBorder(),
+                    elevation: 4,
+                    child: InkWell(
+                      onTap: _removeProfileImage,
+                      customBorder: const CircleBorder(),
+                      child: const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Upload Button
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _pickImage,
+              icon: const Icon(Icons.upload_rounded),
+              label: Text(_profileImageBase64 != null ? 'Change Picture' : 'Upload Picture'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
