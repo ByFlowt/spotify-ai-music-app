@@ -562,6 +562,7 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
   }
 
   Future<void> _generatePlaylist(AIPlaylistService aiService, String mood) async {
+    // Generate the playlist
     switch (mood) {
       case 'workout':
         await aiService.generateWorkoutPlaylist();
@@ -571,6 +572,31 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
         break;
       default:
         await aiService.generateSmartPlaylist(mood: mood);
+    }
+    
+    // Automatically save the generated tracks to the main playlist
+    if (aiService.generatedTracks.isNotEmpty) {
+      await aiService.saveGeneratedPlaylist();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Text('🎉 ${aiService.generatedTracks.length} tracks added to your playlist!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 

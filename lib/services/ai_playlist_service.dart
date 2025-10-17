@@ -215,17 +215,17 @@ class AIPlaylistService extends ChangeNotifier {
       notifyListeners();
       
       _log('═══════════════════════════════════════════════');
-        print('✅ AI Playlist Generation Complete!');
-        print('🎵 Final playlist: ${_generatedTracks.length} tracks');
-        print('═══════════════════════════════════════════════');
+      _log('✅ AI Playlist Generation Complete!');
+      _log('🎵 Final playlist: ${_generatedTracks.length} tracks');
+      _log('═══════════════════════════════════════════════');
       
       return _generatedTracks;
       
     } catch (e) {
       _log('═══════════════════════════════════════════════');
-        print('❌ ERROR: AI Playlist Generation Failed');
-        print('Error details: $e');
-        print('═══════════════════════════════════════════════');
+      _log('❌ ERROR: AI Playlist Generation Failed');
+      _log('Error details: $e');
+      _log('═══════════════════════════════════════════════');
       _currentStep = 'Error: Failed to generate playlist';
       _isGenerating = false;
       _progress = 0.0;
@@ -488,9 +488,11 @@ class AIPlaylistService extends ChangeNotifier {
 
   // Save generated playlist to user's library
   Future<void> saveGeneratedPlaylist() async {
+    _log('💾 Saving ${_generatedTracks.length} tracks to main playlist...');
     for (var track in _generatedTracks) {
       await _playlistManager.addTrack(track);
     }
+    _log('✅ All tracks saved to playlist successfully!');
   }
 
   // Quick actions
