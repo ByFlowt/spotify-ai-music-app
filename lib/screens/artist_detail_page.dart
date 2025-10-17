@@ -65,166 +65,170 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return GestureDetector(
-      onVerticalDragEnd: (details) {
-        // Detect swipe down gesture (positive velocity means downward)
-        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
-          Navigator.pop(context);
-        }
-      },
-      child: PopScope(
-        canPop: false,
-        onPopInvoked: (didPop) {
-          if (didPop) return;
-          Navigator.pop(context);
+    return Scaffold(
+      body: NotificationListener<OverscrollIndicatorNotification>(
+        onNotification: (notification) {
+          notification.disallowIndicator();
+          return true;
         },
-        child: Scaffold(
-        body: CustomScrollView(
-          slivers: [
-          // App Bar with Artist Image
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            stretch: true,
-            backgroundColor: colorScheme.surface,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Artist Image
-                  Hero(
-                    tag: 'artist_${widget.artist.id}',
-                    child: widget.artist.imageUrl != null
-                        ? Image.network(
-                            widget.artist.imageUrl!,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                color: colorScheme.surfaceContainerHighest,
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    color: colorScheme.primary,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (scrollNotification) {
+            if (scrollNotification is ScrollUpdateNotification) {
+              // Detect pulling down when at the top
+              if (scrollNotification.metrics.pixels < -100 && 
+                  scrollNotification.metrics.atEdge) {
+                Navigator.pop(context);
+              }
+            }
+            return false;
+          },
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // App Bar with Artist Image
+              SliverAppBar(
+                expandedHeight: 300,
+                pinned: true,
+                stretch: true,
+                backgroundColor: colorScheme.surface,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Artist Image
+                      Hero(
+                        tag: 'artist_${widget.artist.id}',
+                        child: widget.artist.imageUrl != null
+                            ? Image.network(
+                                widget.artist.imageUrl!,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    color: colorScheme.surfaceContainerHighest,
+                                    child: Center(
+                                      child: CircularProgressIndicator(
+                                        color: colorScheme.primary,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) => Container(
+                                  color: colorScheme.surfaceContainerHighest,
+                                  child: Icon(
+                                    Icons.person_rounded,
+                                    size: 80,
+                                    color: colorScheme.onSurfaceVariant,
                                   ),
                                 ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              color: colorScheme.surfaceContainerHighest,
-                              child: Icon(
-                                Icons.person_rounded,
-                                size: 80,
-                                color: colorScheme.onSurfaceVariant,
+                              )
+                            : Container(
+                                color: colorScheme.surfaceContainerHighest,
+                                child: Icon(
+                                  Icons.person_rounded,
+                                  size: 80,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
                               ),
-                            ),
-                          )
-                        : Container(
-                            color: colorScheme.surfaceContainerHighest,
-                            child: Icon(
-                              Icons.person_rounded,
-                              size: 80,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                  ),
-                  
-                  // Gradient Overlay
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.7),
-                        ],
                       ),
-                    ),
-                  ),
-                  
-                  // Artist Name
-                  Positioned(
-                    bottom: 16,
-                    left: 16,
-                    right: 16,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.artist.name,
-                          style: textTheme.headlineLarge?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            shadows: [
-                              Shadow(
-                                offset: const Offset(0, 2),
-                                blurRadius: 8,
-                                color: Colors.black.withOpacity(0.5),
-                              ),
+                      
+                      // Gradient Overlay
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withOpacity(0.7),
                             ],
                           ),
                         ),
-                        if (widget.artist.genres.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              widget.artist.genres.take(3).join(' • '),
-                              style: textTheme.bodyLarge?.copyWith(
-                                color: Colors.white.withOpacity(0.9),
+                      ),
+                      
+                      // Artist Name
+                      Positioned(
+                        bottom: 16,
+                        left: 16,
+                        right: 16,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.artist.name,
+                              style: textTheme.headlineLarge?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
                                 shadows: [
                                   Shadow(
-                                    offset: const Offset(0, 1),
-                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                    blurRadius: 8,
                                     color: Colors.black.withOpacity(0.5),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                      ],
-                    ),
+                            if (widget.artist.genres.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(
+                                  widget.artist.genres.take(3).join(' • '),
+                                  style: textTheme.bodyLarge?.copyWith(
+                                    color: Colors.white.withOpacity(0.9),
+                                    shadows: [
+                                      Shadow(
+                                        offset: const Offset(0, 1),
+                                        blurRadius: 4,
+                                        color: Colors.black.withOpacity(0.5),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-          
-          // Artist Stats
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStatCard(
-                    context,
-                    Icons.favorite_rounded,
-                    'Followers',
-                    _formatNumber(widget.artist.followers),
-                    colorScheme.primaryContainer,
-                    colorScheme.onPrimaryContainer,
+
+              // Artist Stats
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatCard(
+                        context,
+                        Icons.favorite_rounded,
+                        'Followers',
+                        _formatNumber(widget.artist.followers),
+                        colorScheme.primaryContainer,
+                        colorScheme.onPrimaryContainer,
+                      ),
+                      _buildStatCard(
+                        context,
+                        Icons.trending_up_rounded,
+                        'Popularity',
+                        '${widget.artist.popularity}%',
+                        colorScheme.secondaryContainer,
+                        colorScheme.onSecondaryContainer,
+                      ),
+                      _buildStatCard(
+                        context,
+                        Icons.music_note_rounded,
+                        'Tracks',
+                        '${_topTracks.length}',
+                        colorScheme.tertiaryContainer,
+                        colorScheme.onTertiaryContainer,
+                      ),
+                    ],
                   ),
-                  _buildStatCard(
-                    context,
-                    Icons.trending_up_rounded,
-                    'Popularity',
-                    '${widget.artist.popularity}%',
-                    colorScheme.secondaryContainer,
-                    colorScheme.onSecondaryContainer,
-                  ),
-                  _buildStatCard(
-                    context,
-                    Icons.music_note_rounded,
-                    'Tracks',
-                    '${_topTracks.length}',
-                    colorScheme.tertiaryContainer,
-                    colorScheme.onTertiaryContainer,
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
-          
+
           // Top Tracks Header
           SliverToBoxAdapter(
             child: Padding(
@@ -292,8 +296,8 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
           const SliverToBoxAdapter(
             child: SizedBox(height: 24),
           ),
-        ],
-        ),
+          ],
+          ),
         ),
       ),
     );

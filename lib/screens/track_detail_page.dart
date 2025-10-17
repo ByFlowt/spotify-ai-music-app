@@ -127,70 +127,74 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return GestureDetector(
-      onVerticalDragEnd: (details) {
-        // Detect swipe down gesture (positive velocity means downward)
-        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
-          Navigator.pop(context);
-        }
-      },
-      child: PopScope(
-        canPop: false,
-        onPopInvoked: (didPop) {
-          if (didPop) return;
-          Navigator.pop(context);
+    return Scaffold(
+      body: NotificationListener<OverscrollIndicatorNotification>(
+        onNotification: (notification) {
+          notification.disallowIndicator();
+          return true;
         },
-        child: Scaffold(
-        body: CustomScrollView(
-          slivers: [
-          // App Bar with Album Art
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            stretch: true,
-            backgroundColor: colorScheme.surface,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (widget.track.imageUrl != null)
-                    Image.network(
-                      widget.track.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: colorScheme.surfaceContainerHighest,
-                        child: Icon(
-                          Icons.music_note_rounded,
-                          size: 80,
-                          color: colorScheme.onSurfaceVariant,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (scrollNotification) {
+            if (scrollNotification is ScrollUpdateNotification) {
+              // Detect pulling down when at the top
+              if (scrollNotification.metrics.pixels < -100 && 
+                  scrollNotification.metrics.atEdge) {
+                Navigator.pop(context);
+              }
+            }
+            return false;
+          },
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // App Bar with Album Art
+              SliverAppBar(
+                expandedHeight: 300,
+                pinned: true,
+                stretch: true,
+                backgroundColor: colorScheme.surface,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (widget.track.imageUrl != null)
+                        Image.network(
+                          widget.track.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            color: colorScheme.surfaceContainerHighest,
+                            child: Icon(
+                              Icons.music_note_rounded,
+                              size: 80,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          color: colorScheme.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.music_note_rounded,
+                            size: 80,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withOpacity(0.8),
+                            ],
+                          ),
                         ),
                       ),
-                    )
-                  else
-                    Container(
-                      color: colorScheme.surfaceContainerHighest,
-                      child: Icon(
-                        Icons.music_note_rounded,
-                        size: 80,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.8),
-                        ],
-                      ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
 
           // Content
           SliverToBoxAdapter(
@@ -362,8 +366,8 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
               ),
             ),
           ),
-        ],
-        ),
+          ],
+          ),
         ),
       ),
     );
