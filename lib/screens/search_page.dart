@@ -1,7 +1,10 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/artist_model.dart';
 import '../services/spotify_service.dart';
+import '../services/gemini_ai_service.dart';
 import 'artist_detail_page.dart';
 
 class SearchPage extends StatefulWidget {
@@ -34,6 +37,72 @@ class _SearchPageState extends State<SearchPage> {
       'name': 'Techno',
       'icon': Icons.graphic_eq,
       'color': const Color(0xFFB026FF)
+    },
+  ];
+
+  final Map<String, Color> _genreAccentColors = {
+    'all': const Color(0xFF1DB954),
+    'pop': const Color(0xFFFF72B6),
+    'rock': const Color(0xFF6C63FF),
+    'hip-hop': const Color(0xFFFFB74D),
+    'electronic': const Color(0xFF00E5FF),
+    'classical': const Color(0xFFA1887F),
+    'jazz': const Color(0xFF8E24AA),
+    'r&b': const Color(0xFFEF5350),
+    'country': const Color(0xFF8D6E63),
+    'latin': const Color(0xFFFF7043),
+  };
+
+  final List<Map<String, dynamic>> _allGenres = [
+    {
+      'name': 'All',
+      'icon': Icons.grid_view_rounded,
+      'key': 'all',
+    },
+    {
+      'name': 'Pop',
+      'icon': Icons.stars_rounded,
+      'key': 'pop',
+    },
+    {
+      'name': 'Rock',
+      'icon': Icons.music_note_rounded,
+      'key': 'rock',
+    },
+    {
+      'name': 'Hip-Hop',
+      'icon': Icons.podcasts_rounded,
+      'key': 'hip-hop',
+    },
+    {
+      'name': 'Electronic',
+      'icon': Icons.electrical_services,
+      'key': 'electronic',
+    },
+    {
+      'name': 'Classical',
+      'icon': Icons.piano,
+      'key': 'classical',
+    },
+    {
+      'name': 'Jazz',
+      'icon': Icons.music_video,
+      'key': 'jazz',
+    },
+    {
+      'name': 'R&B',
+      'icon': Icons.nightlife,
+      'key': 'r&b',
+    },
+    {
+      'name': 'Country',
+      'icon': Icons.nature,
+      'key': 'country',
+    },
+    {
+      'name': 'Latin',
+      'icon': Icons.celebration,
+      'key': 'latin',
     },
   ];
 
@@ -78,24 +147,94 @@ class _SearchPageState extends State<SearchPage> {
     // User must manually search or click search button
   }
 
-  Future<void> _searchArtistsByGenre(String genre) async {
+  Future<void> _searchArtistsWithGemini(String genre) async {
+    final geminiService = context.read<GeminiAIService>();
     final spotifyService = context.read<SpotifyService>();
-    final results = await spotifyService.searchArtists('genre:"$genre"');
 
+    List<String> searchTerms = [];
+    try {
+      searchTerms = await geminiService.suggestArtistsForGenre(genre);
+      if (kDebugMode) {
+        print(
+            '✨ [Artists] Gemini returned ${searchTerms.length} terms for $genre');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ [Artists] Gemini suggestion failed for $genre: $e');
+      }
+    }
+
+    if (searchTerms.isEmpty) {
+      searchTerms = ['genre:"$genre"'];
+    }
+
+    final uniqueArtists = <String, Artist>{};
     _suppressSearchFieldListener = true;
     _searchController.text = '';
     _suppressSearchFieldListener = false;
 
+    for (final term in searchTerms) {
+      final query = term.contains('genre:') ? term : 'genre:"$genre" $term';
+      if (kDebugMode) {
+        print('🔍 [Artists] Searching "$query"');
+      }
+      final results = await spotifyService.searchArtists(query);
+      for (final artist in results) {
+        final key = artist.id.isNotEmpty ? artist.id : artist.name;
+        uniqueArtists.putIfAbsent(key, () => artist);
+      }
+      if (uniqueArtists.length >= 20) break;
+    }
+
+    if (uniqueArtists.isEmpty) {
+      if (kDebugMode) {
+        print('ℹ️ [Artists] Using fallback Spotify genre search for $genre');
+      }
+      final fallbackResults =
+          await spotifyService.searchArtists('genre:"$genre"');
+      for (final artist in fallbackResults) {
+        final key = artist.id.isNotEmpty ? artist.id : artist.name;
+        uniqueArtists.putIfAbsent(key, () => artist);
+      }
+    }
+
+    final artistsList = uniqueArtists.values.toList()
+      ..sort((a, b) => b.popularity.compareTo(a.popularity));
+
+    if (!mounted) return;
     setState(() {
-      _searchResults = results;
-      _hasSearched = true;
+      _selectedGenre = genre;
+      _searchResults = artistsList;
+      _hasSearched = artistsList.isNotEmpty;
     });
   }
 
-  Future<void> _handleGenreSuggestionTap(String genreName) async {
-    final genreKey = genreName.toLowerCase();
+  String _displayGenreName(String key) {
+    for (final genre in _allGenres) {
+      if (genre['key'] == key) {
+        return genre['name'] as String;
+      }
+    }
+    return key.toUpperCase();
+  }
+
+  Future<void> _handleGenreSelection(String genreKey) async {
     _applyGenreFilter(genreKey);
-    await _searchArtistsByGenre(genreKey);
+
+    if (genreKey == 'all') {
+      if (_searchController.text.trim().isNotEmpty) {
+        await _performSearch(_searchController.text.trim());
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _hasSearched = false;
+          _searchResults = [];
+        });
+      }
+      return;
+    }
+
+    await _searchArtistsWithGemini(genreKey);
   }
 
   void _showGenreSuggestionsModal() {
@@ -144,12 +283,49 @@ class _SearchPageState extends State<SearchPage> {
                     genre['color'] as Color,
                     onTap: () async {
                       Navigator.pop(modalContext);
-                      await _handleGenreSuggestionTap(
-                        genre['name'] as String,
+                      await _handleGenreSelection(
+                        (genre['name'] as String).toLowerCase(),
                       );
                     },
                   );
                 }).toList(),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Popular genres',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: _allGenres
+                    .where((genre) => (genre['key'] as String) != 'all')
+                    .map((genre) {
+                  final key = genre['key'] as String;
+                  final color =
+                      _genreAccentColors[key] ?? colorScheme.secondary;
+                  return _buildAISuggestionChip(
+                    genre['name'] as String,
+                    genre['icon'] as IconData,
+                    color,
+                    onTap: () async {
+                      Navigator.pop(modalContext);
+                      await _handleGenreSelection(key);
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.pop(modalContext);
+                  unawaited(_handleGenreSelection('all'));
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Clear genre filter'),
               ),
             ],
           ),
@@ -163,8 +339,6 @@ class _SearchPageState extends State<SearchPage> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final spotifyService = context.watch<SpotifyService>();
-    final bool showAISuggestions =
-        !_hasSearched && _searchController.text.trim().isEmpty;
 
     return Scaffold(
       body: SafeArea(
@@ -294,71 +468,6 @@ class _SearchPageState extends State<SearchPage> {
                       onSubmitted: _performSearch,
                     ),
                   ),
-
-                  if (showAISuggestions) ...[
-                    const SizedBox(height: 20),
-
-                    // AI-Suggested Genres Section
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            colorScheme.primary.withOpacity(0.12),
-                            colorScheme.tertiary.withOpacity(0.08),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: colorScheme.primary.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.auto_awesome,
-                                size: 18,
-                                color: colorScheme.primary,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'AI Suggestions for You',
-                                style: textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: colorScheme.primary,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _aiSuggestedGenres.map((genre) {
-                              return _buildAISuggestionChip(
-                                genre['name'] as String,
-                                genre['icon'] as IconData,
-                                genre['color'] as Color,
-                                onTap: () async {
-                                  await _handleGenreSuggestionTap(
-                                    genre['name'] as String,
-                                  );
-                                },
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
                   // Genres Button (clickable to show AI suggestions modal)
                   const SizedBox(height: 16),
                   Material(
@@ -408,6 +517,16 @@ class _SearchPageState extends State<SearchPage> {
                                       color: colorScheme.onSurfaceVariant,
                                     ),
                                   ),
+                                  if (_selectedGenre != 'all') ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Selected: ${_displayGenreName(_selectedGenre)}',
+                                      style: textTheme.labelSmall?.copyWith(
+                                        color: colorScheme.primary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -1023,7 +1142,7 @@ class _SearchPageState extends State<SearchPage> {
       if (onTap != null) {
         onTap();
       } else {
-        _applyGenreFilter(genre.toLowerCase());
+        unawaited(_handleGenreSelection(genre.toLowerCase()));
       }
     }
 

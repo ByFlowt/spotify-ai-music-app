@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:provider/provider.dart';
 import '../models/track_model.dart';
 import '../services/spotify_service.dart';
@@ -859,6 +859,9 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
 
   Future<void> _toggleRecording() async {
     if (_isRecording) {
+      if (kDebugMode) {
+        print('[Shazam] Stopping recording and processing audio...');
+      }
       // Stop recording and identify
       setState(() {
         _statusText = 'Identifying song...';
@@ -869,15 +872,25 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
       try {
         // Stop recording and get audio data
         final audioBase64 = await _audioRecorder?.stopRecording();
+        if (kDebugMode) {
+          print(
+              '[Shazam] Audio captured: ${audioBase64?.length ?? 0} characters');
+        }
 
         if (audioBase64 == null || audioBase64.isEmpty) {
           throw Exception('No audio data recorded');
         }
 
         // Call the backend API to identify the song
+        if (kDebugMode) {
+          print('[Shazam] Sending audio to recognition API...');
+        }
         final result = await ApiProxyService.recognizeAudio(
           audioBase64: audioBase64,
         );
+        if (kDebugMode) {
+          print('[Shazam] Recognition response status: ${result['status']}');
+        }
 
         if (mounted) {
           Navigator.pop(context);
@@ -886,12 +899,19 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
             final songData = result['result'];
             final title = songData['title'] ?? 'Unknown';
             final artist = songData['artist'] ?? 'Unknown';
+            if (kDebugMode) {
+              print('[Shazam] Identified song: $title - $artist');
+            }
 
             // Search Spotify to get the real track data
             final spotifyService = context.read<SpotifyService>();
             final searchQuery = '$title $artist';
             final spotifyResults =
                 await spotifyService.searchTracks(searchQuery);
+            if (kDebugMode) {
+              print(
+                  '[Shazam] Spotify search returned ${spotifyResults.length} results');
+            }
 
             Track? identifiedTrack;
 
@@ -900,6 +920,10 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
               identifiedTrack = spotifyResults.first;
             } else {
               // Fallback: Create track from AudD data if Spotify search fails
+              if (kDebugMode) {
+                print(
+                    '[Shazam] Using fallback track data from recognition API');
+              }
               identifiedTrack = Track(
                 id: songData['spotify_id'] ??
                     '${title}_${artist}'.replaceAll(' ', '_'),
@@ -916,10 +940,42 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
               );
             }
 
+            if (identifiedTrack.id.isEmpty) {
+              final safeId =
+                  '${identifiedTrack.name}_${identifiedTrack.artistName}_${DateTime.now().millisecondsSinceEpoch}'
+                      .toLowerCase()
+                      .replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+              identifiedTrack = Track(
+                id: safeId,
+                name: identifiedTrack.name,
+                artistName: identifiedTrack.artistName,
+                albumName: identifiedTrack.albumName,
+                imageUrl: identifiedTrack.imageUrl,
+                durationMs: identifiedTrack.durationMs,
+                popularity: identifiedTrack.popularity,
+                previewUrl: identifiedTrack.previewUrl,
+                spotifyUrl: identifiedTrack.spotifyUrl,
+              );
+              if (kDebugMode) {
+                print('[Shazam] Generated fallback track id: $safeId');
+              }
+            }
+
             // Add to identified songs playlist and main playlist
             final playlistManager = context.read<PlaylistManager>();
-            await playlistManager.addIdentifiedSong(identifiedTrack);
-            await playlistManager.addTrack(identifiedTrack);
+            try {
+              await playlistManager.addIdentifiedSong(identifiedTrack);
+              await playlistManager.addTrack(identifiedTrack);
+              await playlistManager.loadPlaylistsFromStorage();
+              if (kDebugMode) {
+                print(
+                    '[Shazam] Saved track ${identifiedTrack.name}. My List: ${playlistManager.count}, Identified: ${playlistManager.identifiedCount}');
+              }
+            } catch (saveError) {
+              if (kDebugMode) {
+                print('[Shazam] Error saving identified track: $saveError');
+              }
+            }
 
             if (mounted) {
               setState(() {
@@ -949,6 +1005,9 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
               _showSongIdentified(identifiedTrack);
             }
           } else {
+            if (kDebugMode) {
+              print('[Shazam] Recognition failed or returned no result.');
+            }
             setState(() {
               _statusText = 'Tap to start listening...';
               _isProcessing = false;
@@ -958,6 +1017,9 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
           }
         }
       } catch (e) {
+        if (kDebugMode) {
+          print('[Shazam] Error during recognition: $e');
+        }
         if (mounted) {
           setState(() {
             _error = e.toString();
@@ -973,6 +1035,9 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
         return;
       }
 
+      if (kDebugMode) {
+        print('[Shazam] Requesting microphone access...');
+      }
       setState(() {
         _statusText = 'Requesting microphone access...';
       });
@@ -980,6 +1045,9 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
       final initialized = await _audioRecorder!.initialize();
 
       if (!initialized) {
+        if (kDebugMode) {
+          print('[Shazam] Microphone access denied: ${_audioRecorder!.error}');
+        }
         setState(() {
           _error = _audioRecorder!.error;
           _statusText = 'Microphone access denied';
@@ -987,6 +1055,9 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
         return;
       }
 
+      if (kDebugMode) {
+        print('[Shazam] Starting recording...');
+      }
       final started = await _audioRecorder!.startRecording();
 
       if (started) {
@@ -999,10 +1070,16 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
         // Auto-stop after 10 seconds
         Future.delayed(const Duration(seconds: 10), () {
           if (_isRecording && mounted) {
+            if (kDebugMode) {
+              print('[Shazam] Auto-stopping recording after timeout');
+            }
             _toggleRecording();
           }
         });
       } else {
+        if (kDebugMode) {
+          print('[Shazam] Failed to start recording: ${_audioRecorder!.error}');
+        }
         setState(() {
           _error = _audioRecorder!.error;
           _statusText = 'Failed to start recording';
