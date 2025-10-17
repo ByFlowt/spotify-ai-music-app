@@ -8,18 +8,35 @@ class GeminiAIService {
   static const String apiKey = 'AIzaSyDaKqVBlnGR6UXq5XQjxo7mJDfgVZ9t0NU';
   
   late final GenerativeModel _model;
+  DateTime? _lastRequestTime;
+  static const _minRequestInterval = Duration(seconds: 2); // Rate limiting
   
   GeminiAIService() {
     _model = GenerativeModel(
-      model: 'gemini-2.5-flash',  // Latest free model!
+      model: 'gemini-2.0-flash-exp',  // Use experimental free model with higher limits
       apiKey: apiKey,
       generationConfig: GenerationConfig(
-        temperature: 0.9,  // More creative
+        temperature: 0.8,  // Slightly less creative for more consistent results
         topK: 40,
         topP: 0.95,
         maxOutputTokens: 2048,
       ),
     );
+  }
+  
+  // Rate limiting helper
+  Future<void> _waitForRateLimit() async {
+    if (_lastRequestTime != null) {
+      final elapsed = DateTime.now().difference(_lastRequestTime!);
+      if (elapsed < _minRequestInterval) {
+        final waitTime = _minRequestInterval - elapsed;
+        if (kDebugMode) {
+          print('⏳ Rate limiting: waiting ${waitTime.inMilliseconds}ms...');
+        }
+        await Future.delayed(waitTime);
+      }
+    }
+    _lastRequestTime = DateTime.now();
   }
   
   // Analyze listening history and generate intelligent recommendations
@@ -205,6 +222,9 @@ Make it personal and exciting. No quotes or titles, just the description text.
     int targetCount = 30,
   }) async {
     try {
+      // Rate limiting
+      await _waitForRateLimit();
+      
       // Build context for Gemini
       final topTracksList = topTracks.take(10).map((t) => '${t['name']} by ${t['artist']}').join('\n');
       final topArtistsList = topArtists.take(10).map((a) => a['name']).join(', ');
@@ -262,9 +282,25 @@ Respond ONLY with the JSON array, no additional text or markdown.
       
       return recommendations;
       
+    } on Exception catch (e) {
+      final errorMsg = e.toString();
+      
+      if (kDebugMode) {
+        print('❌ Gemini API Error: $errorMsg');
+      }
+      
+      // Check if it's a rate limit error
+      if (errorMsg.contains('429') || errorMsg.contains('Too Many Requests') || errorMsg.contains('quota')) {
+        if (kDebugMode) {
+          print('⚠️  Rate limit reached. Using fallback recommendations based on your listening history.');
+        }
+      }
+      
+      // Fallback: use artists from their top tracks
+      return _generateFallbackRecommendations(topTracks, topArtists, targetCount);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error generating song recommendations: $e');
+        print('❌ Unexpected error: $e');
       }
       
       // Fallback: use artists from their top tracks
@@ -315,28 +351,38 @@ Respond ONLY with the JSON array, no additional text or markdown.
     int count,
   ) {
     if (kDebugMode) {
-      print('⚠️ Using fallback recommendations based on user\'s top tracks');
+      print('⚠️  Using fallback: searching for songs by your favorite artists');
     }
     
-    // Use similar tracks from their favorites
+    // Create smart recommendations based on their top artists
     final recommendations = <Map<String, String>>[];
     
-    // Add top tracks as base
-    for (var track in topTracks.take(count ~/ 2)) {
+    // Strategy 1: Top songs by their favorite artists (most likely to match taste)
+    for (var artist in topArtists.take(count ~/ 2)) {
+      recommendations.add({
+        'title': 'popular',  // Will search for popular songs by this artist
+        'artist': artist['name'].toString(),
+      });
+    }
+    
+    // Strategy 2: Similar artists search terms
+    for (var artist in topArtists.skip(count ~/ 2).take(count ~/ 4)) {
+      recommendations.add({
+        'title': 'best songs',
+        'artist': artist['name'].toString(),
+      });
+    }
+    
+    // Strategy 3: Include some of their actual top tracks
+    for (var track in topTracks.take(count ~/ 4)) {
       recommendations.add({
         'title': track['name'].toString(),
         'artist': track['artist'].toString(),
       });
     }
     
-    // Fill remaining with generic searches based on their artists
-    final artists = topArtists.take(5).map((a) => a['name'].toString()).toList();
-    for (var i = recommendations.length; i < count && i < artists.length * 2; i++) {
-      final artist = artists[i % artists.length];
-      recommendations.add({
-        'title': 'top songs',  // Will search for top songs by this artist
-        'artist': artist,
-      });
+    if (kDebugMode) {
+      print('📋 Generated ${recommendations.length} fallback recommendations');
     }
     
     return recommendations.take(count).toList();

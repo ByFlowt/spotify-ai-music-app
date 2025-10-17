@@ -120,10 +120,15 @@ class AIPlaylistService extends ChangeNotifier {
       );
       
       if (kDebugMode) {
-        print('✅ Gemini returned ${geminiRecommendations.length} recommendations');
+        print('✅ Received ${geminiRecommendations.length} recommendations');
       }
       
-      // Step 3: Search Spotify for each Gemini recommendation
+      // If Gemini hit rate limits, we'll get fallback recommendations
+      if (geminiRecommendations.isEmpty) {
+        throw Exception('Unable to generate recommendations at this time. Please try again in a moment.');
+      }
+      
+      // Step 3: Search Spotify for each recommendation
       _currentStep = 'Finding songs on Spotify...';
       _progress = 0.5;
       notifyListeners();
