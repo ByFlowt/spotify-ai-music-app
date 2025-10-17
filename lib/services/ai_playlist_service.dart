@@ -89,26 +89,47 @@ class AIPlaylistService extends ChangeNotifier {
     _progress = 0.0;
     notifyListeners();
 
+    if (kDebugMode) {
+      print('═══════════════════════════════════════════════');
+      print('🎵 Starting AI Playlist Generation');
+      print('📊 Target: $targetSize tracks | Mood: $mood');
+      print('═══════════════════════════════════════════════');
+    }
+
     try {
       // Step 1: Get user's listening data from Spotify
-      _currentStep = 'Analyzing your music taste...';
+      _currentStep = 'Loading your listening history...';
       _progress = 0.1;
       notifyListeners();
+      
+      if (kDebugMode) {
+        print('📥 Step 1: Fetching user listening data from Spotify...');
+      }
       
       final userData = await _getUserListeningData();
       
       if (userData == null) {
+        if (kDebugMode) {
+          print('❌ Failed to load user data - user not authenticated');
+        }
         throw Exception('Unable to load your listening history. Please log in.');
       }
       
+      if (kDebugMode) {
+        print('✅ User data loaded successfully');
+        print('   - Top tracks: ${(userData['topTracks'] as List?)?.length ?? 0}');
+        print('   - Top artists: ${(userData['topArtists'] as List?)?.length ?? 0}');
+        print('   - Recent tracks: ${(userData['recentTracks'] as List?)?.length ?? 0}');
+      }
+      
       // Step 2: Ask Gemini AI for song recommendations
-      _currentStep = 'Asking AI for personalized recommendations...';
+      _currentStep = 'Asking Gemini AI for recommendations...';
       _progress = 0.3;
       notifyListeners();
       await Future.delayed(const Duration(milliseconds: 500));
       
       if (kDebugMode) {
-        print('🤖 Sending listening data to Gemini AI...');
+        print('🤖 Step 2: Requesting recommendations from Gemini AI...');
       }
       
       final geminiRecommendations = await _geminiService.generateSongRecommendations(
@@ -129,22 +150,32 @@ class AIPlaylistService extends ChangeNotifier {
       }
       
       // Step 3: Search Spotify for each recommendation
-      _currentStep = 'Finding songs on Spotify...';
+      _currentStep = 'Finding songs on Spotify... (0/${geminiRecommendations.length})';
       _progress = 0.5;
       notifyListeners();
+      
+      if (kDebugMode) {
+        print('🔍 Searching Spotify for ${geminiRecommendations.length} recommendations...');
+      }
       
       final foundTracks = <Track>[];
       int searchedCount = 0;
       
       for (final recommendation in geminiRecommendations) {
         try {
-          // Update progress
+          // Update progress with count
           searchedCount++;
+          _currentStep = 'Finding songs on Spotify... ($searchedCount/${geminiRecommendations.length})';
           _progress = 0.5 + (searchedCount / geminiRecommendations.length * 0.4);
           notifyListeners();
           
           // Search Spotify for this song
           final query = '${recommendation['title']} ${recommendation['artist']}';
+          
+          if (kDebugMode) {
+            print('🔍 [$searchedCount/${geminiRecommendations.length}] Searching: $query');
+          }
+          
           final searchResults = await _spotifyService.searchTracks(query, market: 'NL');
           
           if (searchResults.isNotEmpty) {
@@ -170,19 +201,35 @@ class AIPlaylistService extends ChangeNotifier {
         }
       }
       
+      if (kDebugMode) {
+        print('📊 Step 3 Complete: Found ${foundTracks.length}/${geminiRecommendations.length} tracks on Spotify');
+      }
+      
       // Step 4: Remove duplicates and filter
-      _currentStep = 'Curating your playlist...';
+      _currentStep = 'Removing duplicates...';
       _progress = 0.92;
       notifyListeners();
       await Future.delayed(const Duration(milliseconds: 300));
       
+      if (kDebugMode) {
+        print('🔄 Step 4: Removing duplicates and filtering...');
+      }
+      
       _generatedTracks = _removeDuplicates(foundTracks);
+      
+      if (kDebugMode) {
+        print('   After deduplication: ${_generatedTracks.length} unique tracks');
+      }
       
       // Step 5: Optimize track order
       _currentStep = 'Optimizing playlist flow...';
       _progress = 0.96;
       notifyListeners();
       await Future.delayed(const Duration(milliseconds: 300));
+      
+      if (kDebugMode) {
+        print('🎼 Step 5: Optimizing track order...');
+      }
       
       _generatedTracks = _optimizeTrackOrder(_generatedTracks);
       
@@ -192,17 +239,24 @@ class AIPlaylistService extends ChangeNotifier {
       notifyListeners();
       
       if (kDebugMode) {
-        print('🎵 Generated playlist with ${_generatedTracks.length} tracks');
+        print('═══════════════════════════════════════════════');
+        print('✅ AI Playlist Generation Complete!');
+        print('🎵 Final playlist: ${_generatedTracks.length} tracks');
+        print('═══════════════════════════════════════════════');
       }
       
       return _generatedTracks;
       
     } catch (e) {
       if (kDebugMode) {
-        print('Error generating playlist: $e');
+        print('═══════════════════════════════════════════════');
+        print('❌ ERROR: AI Playlist Generation Failed');
+        print('Error details: $e');
+        print('═══════════════════════════════════════════════');
       }
-      _currentStep = 'Error generating playlist';
+      _currentStep = 'Error: Failed to generate playlist';
       _isGenerating = false;
+      _progress = 0.0;
       notifyListeners();
       return [];
     }

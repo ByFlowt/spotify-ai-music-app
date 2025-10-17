@@ -289,23 +289,61 @@ class _AIPlaylistPageState extends State<AIPlaylistPage>
                     ),
                   ),
 
-                  // Progress Indicator
+                  // Progress Indicator with Enhanced Details
                   if (aiService.isGenerating) ...[
                     const SizedBox(height: 24),
                     Card(
+                      elevation: 4,
                       child: Padding(
-                        padding: const EdgeInsets.all(20.0),
+                        padding: const EdgeInsets.all(24.0),
                         child: Column(
                           children: [
+                            Row(
+                              children: [
+                                SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: CircularProgressIndicator(
+                                    value: aiService.progress,
+                                    strokeWidth: 3,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        aiService.currentStep,
+                                        style: theme.textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${(aiService.progress * 100).toInt()}% complete',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
                             LinearProgressIndicator(
                               value: aiService.progress,
                               minHeight: 8,
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             Text(
-                              aiService.currentStep,
-                              style: theme.textTheme.bodyLarge,
+                              'This may take a moment. Please wait...',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                                fontStyle: FontStyle.italic,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                           ],
