@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 import '../models/track_model.dart';
+import '../services/playlist_manager.dart';
 
 class TrackDetailPage extends StatefulWidget {
   final Track track;
@@ -17,6 +19,7 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlaying = false;
   bool _isLoading = false;
+  bool _isAddedToPlaylist = false;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
 
@@ -24,6 +27,84 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
   void initState() {
     super.initState();
     _setupAudioPlayer();
+    _checkIfInPlaylist();
+  }
+
+  Future<void> _checkIfInPlaylist() async {
+    final playlistManager = context.read<PlaylistManager>();
+    setState(() {
+      _isAddedToPlaylist = playlistManager.isInPlaylist(widget.track.id);
+    });
+  }
+
+  Future<void> _addToPlaylist() async {
+    final playlistManager = context.read<PlaylistManager>();
+    
+    try {
+      await playlistManager.addTrack(widget.track);
+      
+      if (mounted) {
+        setState(() {
+          _isAddedToPlaylist = true;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('${widget.track.name} added to your playlist'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      _showErrorSnackbar('Failed to add track: ${e.toString()}');
+    }
+  }
+
+  Future<void> _removeFromPlaylist() async {
+    final playlistManager = context.read<PlaylistManager>();
+    
+    try {
+      await playlistManager.removeTrack(widget.track.id);
+      
+      if (mounted) {
+        setState(() {
+          _isAddedToPlaylist = false;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('${widget.track.name} removed from playlist'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.blue,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      _showErrorSnackbar('Failed to remove track: ${e.toString()}');
+    }
   }
 
   void _setupAudioPlayer() {
@@ -242,7 +323,44 @@ class _TrackDetailPageState extends State<TrackDetailPage> {
 
                   const SizedBox(height: 32),
 
-                  // Audio Preview Section
+                  // Action Buttons
+                  Row(
+                    children: [
+                      // Add to Playlist Button
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                          onPressed: _isAddedToPlaylist ? _removeFromPlaylist : _addToPlaylist,
+                          icon: Icon(
+                            _isAddedToPlaylist ? Icons.check_rounded : Icons.add_rounded,
+                          ),
+                          label: Text(
+                            _isAddedToPlaylist ? 'In Playlist' : 'Add to Playlist',
+                          ),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor: _isAddedToPlaylist
+                                ? colorScheme.primaryContainer
+                                : colorScheme.secondaryContainer,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Open in Spotify Button
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                          onPressed: _openInSpotify,
+                          icon: const Icon(Icons.open_in_new_rounded),
+                          label: const Text('Spotify'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor: const Color(0xFF1DB954).withOpacity(0.2),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 32),
                   if (widget.track.previewUrl != null) ...[
                     Container(
                       padding: const EdgeInsets.all(20),

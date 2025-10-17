@@ -12,6 +12,7 @@ import 'services/playlist_manager.dart';
 import 'services/ai_playlist_service.dart';
 import 'services/spotify_auth_service.dart';
 import 'services/gemini_ai_service.dart';
+import 'services/shazam_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -27,6 +28,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SpotifyAuthService()),
         ChangeNotifierProvider(create: (_) => SpotifyService()),
         ChangeNotifierProvider(create: (_) => PlaylistManager()),
+        ChangeNotifierProvider(create: (_) => ShazamService()),
         Provider(create: (_) => GeminiAIService()),
         ProxyProvider4<SpotifyService, PlaylistManager, SpotifyAuthService, GeminiAIService, AIPlaylistService>(
           update: (context, spotify, playlist, auth, gemini, previous) =>

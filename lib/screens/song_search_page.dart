@@ -76,45 +76,67 @@ class _SongSearchPageState extends State<SongSearchPage> {
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   
-                  // Search Bar
-                  Container(
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: colorScheme.outline.withOpacity(0.2),
-                      ),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Enter song name...',
-                        prefixIcon: Icon(
-                          Icons.music_note_rounded,
-                          color: colorScheme.primary,
+                  // Search Bar with Audio Button
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: colorScheme.outline.withOpacity(0.2),
+                            ),
+                          ),
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: 'Enter song name...',
+                              prefixIcon: Icon(
+                                Icons.music_note_rounded,
+                                color: colorScheme.primary,
+                              ),
+                              suffixIcon: _searchController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear_rounded),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() {
+                                          _searchResults = [];
+                                          _hasSearched = false;
+                                        });
+                                      },
+                                    )
+                                  : null,
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.all(16),
+                            ),
+                            onChanged: (value) {
+                              setState(() {});
+                            },
+                            onSubmitted: _performSearch,
+                          ),
                         ),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear_rounded),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _searchResults = [];
-                                    _hasSearched = false;
-                                  });
-                                },
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.all(16),
                       ),
-                      onChanged: (value) {
-                        setState(() {});
-                      },
-                      onSubmitted: _performSearch,
-                    ),
+                      const SizedBox(width: 8),
+                      // Audio Search Button
+                      Container(
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.mic_rounded,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                          tooltip: 'Search by audio (Shazam)',
+                          onPressed: () => _showAudioSearchDialog(context),
+                        ),
+                      ),
+                    ],
                   ),
                   
                   const SizedBox(height: 12),
@@ -430,6 +452,76 @@ class _SongSearchPageState extends State<SongSearchPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showAudioSearchDialog(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Search by Audio (Shazam)'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.mic_rounded,
+                size: 56,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Audio Recognition',
+              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Use Shazam API to identify songs by audio. Upload or provide an audio URL.',
+              textAlign: TextAlign.center,
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // In a real app, you would integrate with actual audio input
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Audio URL or file path',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Audio search feature coming soon!\nIntegrate with RapidAPI Shazam endpoint'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: const Text('Search'),
+          ),
+        ],
       ),
     );
   }
