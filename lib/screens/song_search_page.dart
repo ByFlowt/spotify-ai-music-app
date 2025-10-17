@@ -46,6 +46,7 @@ class _SongSearchPageState extends State<SongSearchPage> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final playlistManager = context.watch<PlaylistManager>();
+    final spotifyService = context.watch<SpotifyService>();
 
     return Scaffold(
       appBar: AppBar(
@@ -118,14 +119,20 @@ class _SongSearchPageState extends State<SongSearchPage> {
                   
                   const SizedBox(height: 12),
                   
-                  // Search suggestions
+                  // Search suggestions - show last searched or defaults
                   Wrap(
                     spacing: 8,
-                    children: [
-                      _buildSuggestionChip('Blinding Lights', colorScheme),
-                      _buildSuggestionChip('Shape of You', colorScheme),
-                      _buildSuggestionChip('Bad Guy', colorScheme),
-                    ],
+                    children: spotifyService.lastSearchedTracks.take(3).map((track) {
+                      return _buildSuggestionChip(track.name, colorScheme);
+                    }).toList().isNotEmpty
+                        ? spotifyService.lastSearchedTracks.take(3).map((track) {
+                            return _buildSuggestionChip(track.name, colorScheme);
+                          }).toList()
+                        : [
+                            _buildSuggestionChip('Blinding Lights', colorScheme),
+                            _buildSuggestionChip('Shape of You', colorScheme),
+                            _buildSuggestionChip('Bad Guy', colorScheme),
+                          ],
                   ),
                 ],
               ),

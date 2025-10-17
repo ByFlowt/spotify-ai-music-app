@@ -368,22 +368,25 @@ class AIPlaylistService extends ChangeNotifier {
       'metal', 'punk', 'jazz', 'classical', 'r-n-b', 'soul', 'funk',
       'blues', 'country', 'folk', 'reggae', 'latin', 'world-music',
       'ambient', 'chill', 'acoustic', 'piano', 'guitar', 'vocal',
-      'party', 'happy', 'sad', 'energetic', 'relaxed', 'sleep'
+      'party', 'happy', 'sad', 'energetic', 'relaxed', 'sleep',
+      'hard-rock', 'industrial'
     };
     
     // Genre mapping for common mismatches
     const genreMapping = {
-      'frenchcore': 'hardcore',
+      'frenchcore': 'hard-rock',
       'hardstyle': 'hard-rock',
       'hardcore': 'hard-rock',
-      'speedcore': 'hardcore',
-      'uk hardcore': 'hardcore',
-      'gabber': 'hardcore',
+      'speedcore': 'hard-rock',
+      'uk hardcore': 'hard-rock',
+      'gabber': 'hard-rock',
       'uptempo': 'edm',
       'rawstyle': 'hard-rock',
       'industrial hardcore': 'industrial',
       'terror': 'hard-rock',
-      'mainstream hardcore': 'hardcore',
+      'mainstream hardcore': 'hard-rock',
+      'terrorcore': 'hard-rock',
+      'breakcore': 'drum-and-bass',
     };
     
     final mapped = <String>[];

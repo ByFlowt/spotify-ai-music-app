@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/spotify_auth_service.dart';
@@ -115,9 +116,18 @@ class _HomePageState extends State<HomePage> {
     final isAuthenticated = authService.isAuthenticated;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: isAuthenticated ? AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        flexibleSpace: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              color: colorScheme.surface.withOpacity(0.3),
+            ),
+          ),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8.0),

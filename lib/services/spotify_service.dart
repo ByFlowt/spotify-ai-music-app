@@ -9,9 +9,15 @@ class SpotifyService extends ChangeNotifier {
   String? _accessToken;
   bool _isLoading = false;
   String? _error;
+  
+  // Search history
+  final List<Artist> _lastSearchedArtists = [];
+  final List<Track> _lastSearchedTracks = [];
 
   bool get isLoading => _isLoading;
   String? get error => _error;
+  List<Artist> get lastSearchedArtists => _lastSearchedArtists;
+  List<Track> get lastSearchedTracks => _lastSearchedTracks;
 
   // Note: In production, store these securely and use a backend proxy
   // For this demo, you'll need to get your own credentials from Spotify Developer Dashboard
@@ -101,6 +107,18 @@ class SpotifyService extends ChangeNotifier {
         final data = jsonDecode(response.body);
         final artistsJson = data['artists']['items'] as List;
         final artists = artistsJson.map((json) => Artist.fromJson(json)).toList();
+        
+        // Store in search history (keep last 5)
+        if (artists.isNotEmpty) {
+          for (final artist in artists.take(3)) {
+            if (!_lastSearchedArtists.any((a) => a.id == artist.id)) {
+              _lastSearchedArtists.insert(0, artist);
+            }
+          }
+          if (_lastSearchedArtists.length > 5) {
+            _lastSearchedArtists.removeRange(5, _lastSearchedArtists.length);
+          }
+        }
         
         _isLoading = false;
         notifyListeners();
@@ -268,6 +286,18 @@ class SpotifyService extends ChangeNotifier {
         final data = jsonDecode(response.body);
         final tracksJson = data['tracks']['items'] as List;
         final tracks = tracksJson.map((json) => Track.fromJson(json)).toList();
+        
+        // Store in search history (keep last 5)
+        if (tracks.isNotEmpty) {
+          for (final track in tracks.take(3)) {
+            if (!_lastSearchedTracks.any((t) => t.id == track.id)) {
+              _lastSearchedTracks.insert(0, track);
+            }
+          }
+          if (_lastSearchedTracks.length > 5) {
+            _lastSearchedTracks.removeRange(5, _lastSearchedTracks.length);
+          }
+        }
         
         _isLoading = false;
         notifyListeners();

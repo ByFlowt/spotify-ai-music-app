@@ -44,6 +44,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final spotifyService = context.watch<SpotifyService>();
 
     return Scaffold(
       body: SafeArea(
@@ -105,14 +106,20 @@ class _SearchPageState extends State<SearchPage> {
                   
                   const SizedBox(height: 12),
                   
-                  // Search suggestions/chips
+                  // Search suggestions/chips - show last searched or defaults
                   Wrap(
                     spacing: 8,
-                    children: [
-                      _buildSuggestionChip('Taylor Swift', colorScheme),
-                      _buildSuggestionChip('The Weeknd', colorScheme),
-                      _buildSuggestionChip('Drake', colorScheme),
-                    ],
+                    children: spotifyService.lastSearchedArtists.take(3).map((artist) {
+                      return _buildSuggestionChip(artist.name, colorScheme);
+                    }).toList().isNotEmpty
+                        ? spotifyService.lastSearchedArtists.take(3).map((artist) {
+                            return _buildSuggestionChip(artist.name, colorScheme);
+                          }).toList()
+                        : [
+                            _buildSuggestionChip('Dr. Peacock', colorScheme),
+                            _buildSuggestionChip('The Weeknd', colorScheme),
+                            _buildSuggestionChip('Drake', colorScheme),
+                          ],
                   ),
                 ],
               ),
