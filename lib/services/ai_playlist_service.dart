@@ -114,7 +114,7 @@ class AIPlaylistService extends ChangeNotifier {
           seedTracks: seeds['tracks'] as List<String>?,
           seedGenres: seeds['genres'] as List<String>?,
           limit: 20,
-          market: 'US',
+          market: 'NL', // Netherlands market for better EU content
         );
         
         allTracks.addAll(batch);
@@ -361,7 +361,8 @@ class AIPlaylistService extends ChangeNotifier {
 
   // Map artist genres to valid Spotify recommendation genres
   List<String> _mapToValidSpotifyGenres(List<String> artistGenres) {
-    // Valid Spotify genre seeds (commonly used ones)
+    // Valid Spotify genre seeds (verified from API)
+    // NOTE: 'hard-rock' and 'hardcore' are NOT valid - use 'metal', 'rock', 'punk' instead
     const validGenres = {
       'pop', 'rock', 'hip-hop', 'edm', 'electronic', 'dance', 'house',
       'techno', 'trance', 'dubstep', 'drum-and-bass', 'indie', 'alternative',
@@ -369,24 +370,26 @@ class AIPlaylistService extends ChangeNotifier {
       'blues', 'country', 'folk', 'reggae', 'latin', 'world-music',
       'ambient', 'chill', 'acoustic', 'piano', 'guitar', 'vocal',
       'party', 'happy', 'sad', 'energetic', 'relaxed', 'sleep',
-      'hard-rock', 'industrial'
+      'hardstyle', 'industrial', 'grunge', 'disco'
     };
     
     // Genre mapping for common mismatches
+    // Map hardcore genres to valid alternatives
     const genreMapping = {
-      'frenchcore': 'hard-rock',
-      'hardstyle': 'hard-rock',
-      'hardcore': 'hard-rock',
-      'speedcore': 'hard-rock',
-      'uk hardcore': 'hard-rock',
-      'gabber': 'hard-rock',
-      'uptempo': 'edm',
-      'rawstyle': 'hard-rock',
+      'frenchcore': 'hardstyle',
+      'hardcore': 'hardstyle',
+      'speedcore': 'hardstyle',
+      'uk hardcore': 'hardstyle',
+      'gabber': 'hardstyle',
+      'uptempo': 'hardstyle',
+      'rawstyle': 'hardstyle',
       'industrial hardcore': 'industrial',
-      'terror': 'hard-rock',
-      'mainstream hardcore': 'hard-rock',
-      'terrorcore': 'hard-rock',
+      'terror': 'metal',
+      'mainstream hardcore': 'hardstyle',
+      'terrorcore': 'metal',
       'breakcore': 'drum-and-bass',
+      'hard dance': 'dance',
+      'happy hardcore': 'dance',
     };
     
     final mapped = <String>[];
@@ -426,7 +429,7 @@ class AIPlaylistService extends ChangeNotifier {
           g.toLowerCase().contains('hard') || 
           g.toLowerCase().contains('core') ||
           g.toLowerCase().contains('metal'))) {
-        mapped.addAll(['hard-rock', 'metal']);
+        mapped.addAll(['hardstyle', 'metal']);
       } else if (artistGenres.any((g) => 
           g.toLowerCase().contains('electronic') || 
           g.toLowerCase().contains('edm'))) {
