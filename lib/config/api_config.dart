@@ -1,22 +1,32 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// Centralized API configuration
 /// Loads all API keys from environment variables (.env file)
 class ApiConfig {
+  // Helper to safely get env variables
+  static String _getEnv(String key) {
+    try {
+      return dotenv.env[key] ?? '';
+    } catch (e) {
+      // On web, dotenv may not be initialized
+      if (kIsWeb) {
+        return '';
+      }
+      rethrow;
+    }
+  }
+
   // Spotify API
-  static String get spotifyClientId =>
-      dotenv.env['SPOTIFY_CLIENT_ID'] ?? '';
+  static String get spotifyClientId => _getEnv('SPOTIFY_CLIENT_ID');
   
-  static String get spotifyClientSecret =>
-      dotenv.env['SPOTIFY_CLIENT_SECRET'] ?? '';
+  static String get spotifyClientSecret => _getEnv('SPOTIFY_CLIENT_SECRET');
 
   // Google Gemini AI
-  static String get geminiApiKey =>
-      dotenv.env['GEMINI_API_KEY'] ?? '';
+  static String get geminiApiKey => _getEnv('GEMINI_API_KEY');
 
   // AUDD Audio Recognition
-  static String get auddApiKey =>
-      dotenv.env['AUDD_API_KEY'] ?? '';
+  static String get auddApiKey => _getEnv('AUDD_API_KEY');
 
   /// Validate that all required API keys are configured
   static List<String> validateConfiguration() {

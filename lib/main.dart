@@ -22,30 +22,38 @@ import 'config/api_config.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Only load .env file on native platforms (not web)
-  if (!kIsWeb) {
-    try {
-      await dotenv.load(fileName: '.env');
-      // Optional: Log configuration status for debugging
-      // ApiConfig.logStatus();
-      
-      // Check for missing required API keys
-      final missing = ApiConfig.validateConfiguration();
-      if (missing.isNotEmpty) {
-        print('⚠️  Warning: Missing API keys: ${missing.join(', ')}');
-        print('Please copy .env.example to .env and fill in your API keys');
+  try {
+    // Only load .env file on native platforms (not web)
+    if (!kIsWeb) {
+      try {
+        await dotenv.load(fileName: '.env');
+        // Optional: Log configuration status for debugging
+        // ApiConfig.logStatus();
+        
+        // Check for missing required API keys
+        final missing = ApiConfig.validateConfiguration();
+        if (missing.isNotEmpty) {
+          print('⚠️  Warning: Missing API keys: ${missing.join(', ')}');
+          print('Please copy .env.example to .env and fill in your API keys');
+        }
+      } catch (e) {
+        print('⚠️  .env file not found or failed to load: $e');
+        print('Some features may not work. See .env.example for setup instructions.');
       }
-    } catch (e) {
-      print('⚠️  .env file not found or failed to load: $e');
-      print('Some features may not work. See .env.example for setup instructions.');
+    } else {
+      // Web platform - .env not deployed, use environment or defaults
+      print('ℹ️  Web deployment - using default API configuration');
+      try {
+        final missing = ApiConfig.validateConfiguration();
+        if (missing.isNotEmpty) {
+          print('⚠️  Warning: Missing API keys: ${missing.join(', ')}');
+        }
+      } catch (e) {
+        print('⚠️  API validation error (web): $e');
+      }
     }
-  } else {
-    // Web platform - .env not deployed, use environment or defaults
-    print('ℹ️  Web deployment - using default API configuration');
-    final missing = ApiConfig.validateConfiguration();
-    if (missing.isNotEmpty) {
-      print('⚠️  Warning: Missing API keys: ${missing.join(', ')}');
-    }
+  } catch (e) {
+    print('⚠️  Initialization error: $e');
   }
   
   runApp(const MyApp());
