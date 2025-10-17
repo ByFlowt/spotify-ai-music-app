@@ -6,9 +6,11 @@ import '../models/track_model.dart';
 class PlaylistManager extends ChangeNotifier {
   List<Track> _myPlaylist = [];
   List<Track> _aiGeneratedPlaylist = []; // Separate list for AI-generated tracks
+  List<Track> _identifiedSongs = []; // List for Shazam-identified songs
   
   List<Track> get playlist => _myPlaylist;
   List<Track> get aiPlaylist => _aiGeneratedPlaylist;
+  List<Track> get identifiedSongs => _identifiedSongs;
   
   PlaylistManager() {
     _loadPlaylist();
@@ -38,6 +40,13 @@ class PlaylistManager extends ChangeNotifier {
         _aiGeneratedPlaylist = decoded.map((item) => Track.fromJson(item)).toList();
       }
       
+      // Load identified songs
+      final identifiedJson = prefs.getString('identified_songs');
+      if (identifiedJson != null) {
+        final List<dynamic> decoded = jsonDecode(identifiedJson);
+        _identifiedSongs = decoded.map((item) => Track.fromJson(item)).toList();
+      }
+      
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
@@ -62,6 +71,12 @@ class PlaylistManager extends ChangeNotifier {
         _aiGeneratedPlaylist.map((track) => track.toJson()).toList(),
       );
       await prefs.setString('ai_playlist', aiPlaylistJson);
+      
+      // Save identified songs
+      final identifiedJson = jsonEncode(
+        _identifiedSongs.map((track) => track.toJson()).toList(),
+      );
+      await prefs.setString('identified_songs', identifiedJson);
     } catch (e) {
       if (kDebugMode) {
         print('Error saving playlist: $e');
@@ -96,6 +111,35 @@ class PlaylistManager extends ChangeNotifier {
     }
     await _savePlaylist();
     notifyListeners();
+  }
+
+  // Add track to identified songs
+  Future<void> addIdentifiedSong(Track track) async {
+    // Add timestamp to track if not already present
+    if (!_identifiedSongs.any((t) => t.id == track.id)) {
+      _identifiedSongs.insert(0, track); // Add to beginning (most recent first)
+      await _savePlaylist();
+      notifyListeners();
+    }
+  }
+
+  // Remove track from identified songs
+  Future<void> removeIdentifiedSong(String trackId) async {
+    _identifiedSongs.removeWhere((track) => track.id == trackId);
+    await _savePlaylist();
+    notifyListeners();
+  }
+
+  // Clear identified songs
+  Future<void> clearIdentifiedSongs() async {
+    _identifiedSongs.clear();
+    await _savePlaylist();
+    notifyListeners();
+  }
+
+  // Check if track is in identified songs
+  bool isIdentifiedSong(String trackId) {
+    return _identifiedSongs.any((track) => track.id == trackId);
   }
 
   // Remove track from main playlist
@@ -141,4 +185,7 @@ class PlaylistManager extends ChangeNotifier {
   
   // Get AI playlist count
   int get aiCount => _aiGeneratedPlaylist.length;
+  
+  // Get identified songs count
+  int get identifiedCount => _identifiedSongs.length;
 }

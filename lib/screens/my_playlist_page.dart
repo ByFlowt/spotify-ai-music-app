@@ -18,6 +18,7 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
     with WidgetsBindingObserver {
   bool _showMainPlaylist = true;
   bool _showAIPlaylist = true;
+  bool _showIdentifiedSongs = true;
 
   @override
   void initState() {
@@ -55,11 +56,11 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
     final textTheme = Theme.of(context).textTheme;
     final playlistManager = context.watch<PlaylistManager>();
     
-    final totalTracks = playlistManager.count + playlistManager.aiCount;
+    final totalTracks = playlistManager.count + playlistManager.aiCount + playlistManager.identifiedCount;
     
     // Debug logging
     if (kDebugMode) {
-      print('🎵 [MY PLAYLIST] Building page - Main: ${playlistManager.count}, AI: ${playlistManager.aiCount}, Total: $totalTracks');
+      print('🎵 [MY PLAYLIST] Building page - Main: ${playlistManager.count}, AI: ${playlistManager.aiCount}, Identified: ${playlistManager.identifiedCount}, Total: $totalTracks');
     }
 
     return Scaffold(
@@ -157,6 +158,20 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
                         isAIPlaylist: true,
                         onClear: () => _showClearDialog(context, playlistManager, 'ai'),
                       ),
+
+                    // Identified Songs Section (Shazam)
+                    if (playlistManager.identifiedCount > 0)
+                      _buildPlaylistSection(
+                        context,
+                        'Identified Songs',
+                        playlistManager.identifiedSongs,
+                        Icons.mic_rounded,
+                        _showIdentifiedSongs,
+                        (value) => setState(() => _showIdentifiedSongs = value),
+                        playlistManager,
+                        isIdentifiedPlaylist: true,
+                        onClear: () => _showClearDialog(context, playlistManager, 'identified'),
+                      ),
                   ],
                 ),
               ),
@@ -173,6 +188,7 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
     Function(bool) onExpandChanged,
     PlaylistManager playlistManager, {
     bool isAIPlaylist = false,
+    bool isIdentifiedPlaylist = false,
     VoidCallback? onClear,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -481,12 +497,15 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
     String playlistType,
   ) {
     final isAI = playlistType == 'ai';
+    final isIdentified = playlistType == 'identified';
+    final playlistName = isAI ? 'AI Playlist' : (isIdentified ? 'Identified Songs' : 'My Playlist');
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Clear ${isAI ? 'AI ' : ''}Playlist?'),
+        title: Text('Clear $playlistName?'),
         content: Text(
-          'Are you sure you want to remove all songs from your ${isAI ? 'AI ' : ''}playlist? This action cannot be undone.',
+          'Are you sure you want to remove all songs from $playlistName? This action cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -497,13 +516,15 @@ class _MyPlaylistPageState extends State<MyPlaylistPage>
             onPressed: () {
               if (isAI) {
                 playlistManager.clearAIPlaylist();
+              } else if (isIdentified) {
+                playlistManager.clearIdentifiedSongs();
               } else {
                 playlistManager.clearPlaylist();
               }
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('${isAI ? 'AI ' : ''}Playlist cleared'),
+                  content: Text('$playlistName cleared'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );

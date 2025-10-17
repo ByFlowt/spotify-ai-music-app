@@ -66,31 +66,25 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      body: NotificationListener<OverscrollIndicatorNotification>(
-        onNotification: (notification) {
-          notification.disallowIndicator();
-          return true;
-        },
-        child: NotificationListener<OverscrollNotification>(
-          onNotification: (notification) {
-            // Only close when overscrolling at the top (pulling down past the top)
-            if (notification.metrics.pixels <= 0 && 
-                notification.overscroll < -100) {
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // App Bar with Artist Image
+          SliverAppBar(
+            expandedHeight: 300,
+            pinned: true,
+            stretch: true,
+            stretchTriggerOffset: 100,
+            onStretchTrigger: () async {
               Navigator.pop(context);
-            }
-            return false;
-          },
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // App Bar with Artist Image
-              SliverAppBar(
-                expandedHeight: 300,
-                pinned: true,
-                stretch: true,
-                backgroundColor: colorScheme.surface,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
+            },
+            backgroundColor: colorScheme.surface,
+            flexibleSpace: FlexibleSpaceBar(
+              stretchModes: const [
+                StretchMode.zoomBackground,
+                StretchMode.blurBackground,
+              ],
+              background: Stack(
                     fit: StackFit.expand,
                     children: [
                       // Artist Image
@@ -294,9 +288,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage>
           const SliverToBoxAdapter(
             child: SizedBox(height: 24),
           ),
-          ],
-          ),
-        ),
+        ],
       ),
     );
   }

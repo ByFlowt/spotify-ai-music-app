@@ -823,10 +823,30 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
           
           if (result['status'] == 'success' && result['result'] != null) {
             final songData = result['result'];
-            _showSongIdentified(
-              songData['title'] ?? 'Unknown',
-              songData['artist'] ?? 'Unknown',
+            final title = songData['title'] ?? 'Unknown';
+            final artist = songData['artist'] ?? 'Unknown';
+            final album = songData['album'];
+            
+            // Create a Track object and add to identified songs
+            final identifiedTrack = Track(
+              id: songData['spotify_id'] ?? '${title}_${artist}'.replaceAll(' ', '_'),
+              name: title,
+              artistName: artist,
+              albumName: album,
+              imageUrl: songData['spotify']?['image'],
+              spotifyUrl: songData['spotify_id'] != null 
+                  ? 'https://open.spotify.com/track/${songData['spotify_id']}'
+                  : null,
+              previewUrl: songData['preview_url'],
+              popularity: 75,
+              durationMs: (songData['duration'] ?? 0) * 1000,
             );
+            
+            // Add to identified songs playlist
+            final playlistManager = context.read<PlaylistManager>();
+            await playlistManager.addIdentifiedSong(identifiedTrack);
+            
+            _showSongIdentified(title, artist);
           } else {
             _showError('Could not identify the song. Please try again or search manually.');
           }
