@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 /// Secure API Proxy Service
 /// Routes API calls through a backend proxy when on web to hide API keys
 class ApiProxyService {
-  // TODO: Replace with your actual Vercel deployment URL
-  static const String _vercelProxyUrl = 'https://your-app.vercel.app';
+  // Your Vercel deployment URL
+  static const String _vercelProxyUrl = 'https://backendproxy-edfpf6fnh-byflowt-prod-tests-projects.vercel.app';
   
   // For local development
   static const String _localProxyUrl = 'http://localhost:3000';
