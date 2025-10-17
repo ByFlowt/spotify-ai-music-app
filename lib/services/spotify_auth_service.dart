@@ -62,6 +62,12 @@ class SpotifyAuthService extends ChangeNotifier {
   
   // Login with Spotify OAuth - Using Implicit Grant Flow for web
   Future<bool> login() async {
+    if (kDebugMode) {
+      print('🔐 [AUTH] Starting Spotify login flow...');
+      print('🔐 [AUTH] Client ID: $clientId');
+      print('🔐 [AUTH] Redirect URI: $redirectUri');
+    }
+    
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -77,6 +83,10 @@ class SpotifyAuthService extends ChangeNotifier {
         'playlist-modify-private',
       ].join(' ');
       
+      if (kDebugMode) {
+        print('🔐 [AUTH] Scopes requested: $scopes');
+      }
+      
       // Use Implicit Grant Flow (response_type=token) for web without backend
       final authUrl = Uri.https('accounts.spotify.com', '/authorize', {
         'client_id': clientId,
@@ -87,10 +97,15 @@ class SpotifyAuthService extends ChangeNotifier {
       });
       
       if (kDebugMode) {
-        print('Auth URL: $authUrl');
+        print('🔐 [AUTH] Opening authorization URL...');
+        print('🔐 [AUTH] URL: $authUrl');
       }
       
       // Open browser for authentication
+      if (kDebugMode) {
+        print('🔐 [AUTH] Calling FlutterWebAuth2.authenticate...');
+      }
+      
       final result = await FlutterWebAuth2.authenticate(
         url: authUrl.toString(),
         callbackUrlScheme: 'https',
@@ -100,12 +115,22 @@ class SpotifyAuthService extends ChangeNotifier {
       );
       
       if (kDebugMode) {
-        print('Auth result: $result');
+        print('🔐 [AUTH] Received callback result');
+        print('🔐 [AUTH] Result URL: $result');
       }
       
       // Extract access token from URL fragment (after #)
       // Format: https://byflowt.github.io/spotify-ai-music-app/#access_token=XXX&token_type=Bearer&expires_in=3600
       final uri = Uri.parse(result);
+      
+      if (kDebugMode) {
+        print('🔐 [AUTH] Parsing callback URI...');
+        print('🔐 [AUTH] URI scheme: ${uri.scheme}');
+        print('🔐 [AUTH] URI host: ${uri.host}');
+        print('🔐 [AUTH] URI path: ${uri.path}');
+        print('🔐 [AUTH] URI fragment: ${uri.fragment}');
+        print('🔐 [AUTH] URI query: ${uri.query}');
+      }
       
       // Parse fragment manually since Uri doesn't parse # fragments as query params
       String? accessToken;
@@ -114,50 +139,72 @@ class SpotifyAuthService extends ChangeNotifier {
       // Try to parse fragment
       if (uri.fragment.isNotEmpty) {
         if (kDebugMode) {
-          print('Fragment: ${uri.fragment}');
+          print('🔐 [AUTH] Processing fragment parameters...');
         }
         final fragmentParams = Uri.splitQueryString(uri.fragment);
+        if (kDebugMode) {
+          print('🔐 [AUTH] Fragment params: ${fragmentParams.keys.join(", ")}');
+        }
         accessToken = fragmentParams['access_token'];
         expiresIn = int.tryParse(fragmentParams['expires_in'] ?? '3600');
         
         // Also check for error in fragment
         final error = fragmentParams['error'];
         if (error != null) {
+          if (kDebugMode) {
+            print('❌ [AUTH] Error in fragment: $error');
+          }
           throw Exception('Spotify authentication error: $error');
         }
       }
       
       // Also try query params (in case it's in the query instead of fragment)
       if (accessToken == null && uri.queryParameters.isNotEmpty) {
+        if (kDebugMode) {
+          print('🔐 [AUTH] Trying query parameters...');
+        }
         accessToken = uri.queryParameters['access_token'];
         expiresIn = int.tryParse(uri.queryParameters['expires_in'] ?? '3600');
         
         // Also check for error in query params
         final error = uri.queryParameters['error'];
         if (error != null) {
+          if (kDebugMode) {
+            print('❌ [AUTH] Error in query: $error');
+          }
           throw Exception('Spotify authentication error: $error');
         }
       }
       
       if (accessToken == null || accessToken.isEmpty) {
         if (kDebugMode) {
-          print('Failed to extract token from URL: $result');
-          print('URI fragment: ${uri.fragment}');
-          print('URI query: ${uri.query}');
+          print('❌ [AUTH] Failed to extract access token');
+          print('❌ [AUTH] Full result URL: $result');
         }
         throw Exception('No access token received from Spotify. Please try again.');
       }
       
       if (kDebugMode) {
-        print('Successfully extracted access token');
+        print('✅ [AUTH] Successfully extracted access token');
+        print('✅ [AUTH] Token length: ${accessToken.length} characters');
+        print('✅ [AUTH] Expires in: $expiresIn seconds');
       }
       
       // Store tokens
+      if (kDebugMode) {
+        print('🔐 [AUTH] Storing tokens to secure storage...');
+      }
+      
       _accessToken = accessToken;
       _tokenExpiry = DateTime.now().add(Duration(seconds: expiresIn ?? 3600));
       
       await _storage.write(key: 'spotify_access_token', value: _accessToken);
       await _storage.write(key: 'spotify_token_expiry', value: _tokenExpiry!.toIso8601String());
+      
+      if (kDebugMode) {
+        print('✅ [AUTH] Tokens stored successfully');
+        print('🔐 [AUTH] Fetching user profile...');
+      }
       
       // Get user profile
       await _fetchUserProfile();
@@ -167,7 +214,9 @@ class SpotifyAuthService extends ChangeNotifier {
       notifyListeners();
       
       if (kDebugMode) {
-        print('Login successful! User: ${_userProfile?['display_name']}');
+        print('✅ [AUTH] Login successful!');
+        print('✅ [AUTH] User: ${_userProfile?['display_name'] ?? 'Unknown'}');
+        print('✅ [AUTH] Email: ${_userProfile?['email'] ?? 'N/A'}');
       }
       
       return true;
@@ -176,12 +225,13 @@ class SpotifyAuthService extends ChangeNotifier {
       if (e.toString().contains('CANCELED') || e.toString().contains('User cancelled')) {
         _error = null; // Don't show error if user cancelled
         if (kDebugMode) {
-          print('Login cancelled by user');
+          print('⚠️ [AUTH] Login cancelled by user');
         }
       } else {
         _error = 'Login failed: ${e.toString()}';
         if (kDebugMode) {
-          print('Login error: $e');
+          print('❌ [AUTH] Login error: $e');
+          print('❌ [AUTH] Error type: ${e.runtimeType}');
         }
       }
       
@@ -262,6 +312,10 @@ class SpotifyAuthService extends ChangeNotifier {
   
   // Load stored tokens on app start
   Future<void> _loadStoredTokens() async {
+    if (kDebugMode) {
+      print('🔐 [AUTH] Loading stored tokens from secure storage...');
+    }
+    
     try {
       _accessToken = await _storage.read(key: 'spotify_access_token');
       _refreshToken = await _storage.read(key: 'spotify_refresh_token');
@@ -276,28 +330,39 @@ class SpotifyAuthService extends ChangeNotifier {
         _userProfile = jsonDecode(profileString);
       }
       
+      if (kDebugMode) {
+        print('🔐 [AUTH] Access token found: ${_accessToken != null}');
+        print('🔐 [AUTH] Token expiry: $_tokenExpiry');
+        print('🔐 [AUTH] User profile cached: ${_userProfile != null}');
+      }
+      
       if (_accessToken != null) {
         // Check if token is expired
         if (_tokenExpiry != null && DateTime.now().isAfter(_tokenExpiry!)) {
           // Token expired - with Implicit Grant we need to re-authenticate
           if (kDebugMode) {
-            print('Token expired, clearing auth state');
+            print('⚠️ [AUTH] Token expired, clearing auth state');
           }
           await logout();
           return;
         }
         
         // Validate token by trying to fetch user profile
+        if (kDebugMode) {
+          print('🔐 [AUTH] Validating stored token...');
+        }
+        
         try {
           await _fetchUserProfile();
           _isAuthenticated = true;
           if (kDebugMode) {
-            print('Successfully validated stored token');
+            print('✅ [AUTH] Successfully validated stored token');
+            print('✅ [AUTH] Authenticated as: ${_userProfile?['display_name']}');
           }
         } catch (e) {
           // Token is invalid
           if (kDebugMode) {
-            print('Stored token is invalid: $e');
+            print('❌ [AUTH] Stored token is invalid: $e');
           }
           await logout();
           return;
@@ -305,16 +370,19 @@ class SpotifyAuthService extends ChangeNotifier {
       } else {
         // No stored tokens found - user needs to login
         if (kDebugMode) {
-          print('No stored tokens found');
+          print('ℹ️ [AUTH] No stored tokens found - guest mode');
         }
         _isAuthenticated = false;
       }
       
       // Always notify listeners when done checking
+      if (kDebugMode) {
+        print('🔐 [AUTH] Token loading complete. Authenticated: $_isAuthenticated');
+      }
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        print('Error loading stored tokens: $e');
+        print('❌ [AUTH] Error loading stored tokens: $e');
       }
       await logout();
     }

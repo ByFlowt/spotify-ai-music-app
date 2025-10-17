@@ -190,6 +190,7 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _isChecking = true;
+  bool _guestMode = false;
 
   @override
   void initState() {
@@ -247,18 +248,40 @@ class _AuthWrapperState extends State<AuthWrapper> {
       );
     }
     
-    // Only show main app if authenticated with valid token
+    // If authenticated with valid token, show main app
     if (authService.isAuthenticated && authService.accessToken != null) {
       return const MainNavigator();
     }
     
-    // Show login if not authenticated or no token
-    return const LoginPage();
+    // If in guest mode, show main app with limited features
+    if (_guestMode) {
+      return MainNavigator(isGuest: true, onLoginRequest: () {
+        setState(() {
+          _guestMode = false;
+        });
+      });
+    }
+    
+    // Show login page with option to continue as guest
+    return LoginPage(
+      onGuestMode: () {
+        setState(() {
+          _guestMode = true;
+        });
+      },
+    );
   }
 }
 
 class MainNavigator extends StatefulWidget {
-  const MainNavigator({super.key});
+  final bool isGuest;
+  final VoidCallback? onLoginRequest;
+  
+  const MainNavigator({
+    super.key,
+    this.isGuest = false,
+    this.onLoginRequest,
+  });
 
   @override
   State<MainNavigator> createState() => _MainNavigatorState();
@@ -280,9 +303,49 @@ class _MainNavigatorState extends State<MainNavigator> {
     final playlistManager = context.watch<PlaylistManager>();
     
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _pages[_currentIndex],
+      body: Stack(
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: _pages[_currentIndex],
+          ),
+          // Show guest mode banner if in guest mode
+          if (widget.isGuest)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: Material(
+                  color: const Color(0xFF1DB954).withOpacity(0.95),
+                  elevation: 4,
+                  child: InkWell(
+                    onTap: widget.onLoginRequest,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.white, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Guest Mode - Login for personalized features',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Icon(Icons.login, color: Colors.white, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,

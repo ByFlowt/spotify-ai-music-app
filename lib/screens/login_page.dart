@@ -4,7 +4,9 @@ import 'dart:math' as math;
 import '../services/spotify_auth_service.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final VoidCallback? onGuestMode;
+  
+  const LoginPage({super.key, this.onGuestMode});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -340,6 +342,38 @@ class _LoginPageState extends State<LoginPage>
                               color: colorScheme.onSurface.withOpacity(0.6),
                             ),
                           ),
+                          
+                          // Guest mode button
+                          if (widget.onGuestMode != null) ...[
+                            const SizedBox(height: 24),
+                            OutlinedButton.icon(
+                              onPressed: widget.onGuestMode,
+                              icon: const Icon(Icons.explore_outlined),
+                              label: const Text('Continue as Guest'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 16,
+                                ),
+                                side: BorderSide(
+                                  color: colorScheme.primary.withOpacity(0.5),
+                                  width: 2,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Try features without logging in\n(Limited functionality)',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurface.withOpacity(0.5),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
