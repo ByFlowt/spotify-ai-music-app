@@ -116,14 +116,19 @@ class SpotifyService extends ChangeNotifier {
       return _userAccessToken!;
     }
     
-    // Fall back to app token (guest mode)
+    // On web, we don't support guest mode - user must be logged in
+    if (kIsWeb) {
+      throw Exception('Please login with Spotify to use this feature');
+    }
+    
+    // Fall back to app token (guest mode) on native platforms only
     if (_accessToken == null || _accessToken!.isEmpty) {
       await _getAccessToken();
     }
     
     if (_accessToken != null && _accessToken!.isNotEmpty) {
-      if (kIsWeb) {
-        html.window.console.log('🎵 [SPOTIFY] Using guest mode token');
+      if (kDebugMode) {
+        print('🎵 [SPOTIFY] Using guest mode token (native only)');
       }
       return _accessToken!;
     }
@@ -173,9 +178,7 @@ class SpotifyService extends ChangeNotifier {
         notifyListeners();
         return artists;
       } else if (response.statusCode == 401) {
-        // Token expired, get new one and retry
-        _accessToken = null;
-        await _getAccessToken();
+        // Token expired, retry
         return searchArtists(query);
       } else {
         throw Exception('Failed to search artists');
@@ -195,9 +198,8 @@ class SpotifyService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (_accessToken == null) {
-        await _getAccessToken();
-      }
+      // Get appropriate token (user token preferred)
+      final token = await _getValidToken();
 
       // Try multiple markets to find previews
       // Markets are ordered by preview availability (US usually has best availability)
@@ -213,7 +215,7 @@ class SpotifyService extends ChangeNotifier {
               'https://api.spotify.com/v1/artists/$artistId/top-tracks?market=$market',
             ),
             headers: {
-              'Authorization': 'Bearer $_accessToken',
+              'Authorization': 'Bearer $token',
             },
           );
 
@@ -240,8 +242,7 @@ class SpotifyService extends ChangeNotifier {
               break;
             }
           } else if (response.statusCode == 401) {
-            _accessToken = null;
-            await _getAccessToken();
+            // Token expired, retry with new token
             return getArtistTopTracks(artistId);
           } else {
             if (kDebugMode) {
@@ -280,14 +281,13 @@ class SpotifyService extends ChangeNotifier {
   // Get artist details
   Future<Artist?> getArtistDetails(String artistId) async {
     try {
-      if (_accessToken == null) {
-        await _getAccessToken();
-      }
+      // Get appropriate token (user token preferred)
+      final token = await _getValidToken();
 
       final response = await http.get(
         Uri.parse('https://api.spotify.com/v1/artists/$artistId'),
         headers: {
-          'Authorization': 'Bearer $_accessToken',
+          'Authorization': 'Bearer $token',
         },
       );
 
@@ -295,8 +295,7 @@ class SpotifyService extends ChangeNotifier {
         final data = jsonDecode(response.body);
         return Artist.fromJson(data);
       } else if (response.statusCode == 401) {
-        _accessToken = null;
-        await _getAccessToken();
+        // Token expired, retry
         return getArtistDetails(artistId);
       }
     } catch (e) {
@@ -315,9 +314,8 @@ class SpotifyService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (_accessToken == null) {
-        await _getAccessToken();
-      }
+      // Get appropriate token (user token preferred)
+      final token = await _getValidToken();
 
       // Use specific market for better preview availability
       final marketParam = market ?? 'US';
@@ -327,7 +325,7 @@ class SpotifyService extends ChangeNotifier {
           'https://api.spotify.com/v1/search?q=${Uri.encodeComponent(query)}&type=track&limit=20&market=$marketParam',
         ),
         headers: {
-          'Authorization': 'Bearer $_accessToken',
+          'Authorization': 'Bearer $token',
         },
       );
 
@@ -352,8 +350,7 @@ class SpotifyService extends ChangeNotifier {
         notifyListeners();
         return tracks;
       } else if (response.statusCode == 401) {
-        _accessToken = null;
-        await _getAccessToken();
+        // Token expired, retry
         return searchTracks(query, market: market);
       } else {
         throw Exception('Failed to search tracks');
@@ -375,9 +372,8 @@ class SpotifyService extends ChangeNotifier {
     String market = 'US',
   }) async {
     try {
-      if (_accessToken == null) {
-        await _getAccessToken();
-      }
+      // Get appropriate token (user token preferred)
+      final token = await _getValidToken();
 
       final params = <String, String>{
         'limit': limit.toString(),
@@ -415,7 +411,7 @@ class SpotifyService extends ChangeNotifier {
       final response = await http.get(
         uri,
         headers: {
-          'Authorization': 'Bearer $_accessToken',
+          'Authorization': 'Bearer $token',
         },
       );
 
@@ -424,8 +420,7 @@ class SpotifyService extends ChangeNotifier {
         final tracksJson = data['tracks'] as List;
         return tracksJson.map((json) => Track.fromJson(json)).toList();
       } else if (response.statusCode == 401) {
-        _accessToken = null;
-        await _getAccessToken();
+        // Token expired, retry
         return getRecommendations(
           seedArtists: seedArtists,
           seedTracks: seedTracks,
@@ -445,14 +440,13 @@ class SpotifyService extends ChangeNotifier {
   // Get available genre seeds
   Future<List<String>> getAvailableGenres() async {
     try {
-      if (_accessToken == null) {
-        await _getAccessToken();
-      }
+      // Get appropriate token (user token preferred)
+      final token = await _getValidToken();
 
       final response = await http.get(
         Uri.parse('https://api.spotify.com/v1/recommendations/available-genre-seeds'),
         headers: {
-          'Authorization': 'Bearer $_accessToken',
+          'Authorization': 'Bearer $token',
         },
       );
 
@@ -471,14 +465,13 @@ class SpotifyService extends ChangeNotifier {
   // Get audio features for tracks (for AI analysis)
   Future<Map<String, dynamic>?> getAudioFeatures(String trackId) async {
     try {
-      if (_accessToken == null) {
-        await _getAccessToken();
-      }
+      // Get appropriate token (user token preferred)
+      final token = await _getValidToken();
 
       final response = await http.get(
         Uri.parse('https://api.spotify.com/v1/audio-features/$trackId'),
         headers: {
-          'Authorization': 'Bearer $_accessToken',
+          'Authorization': 'Bearer $token',
         },
       );
 
