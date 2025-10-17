@@ -93,7 +93,10 @@ class SpotifyAuthService extends ChangeNotifier {
       // Open browser for authentication
       final result = await FlutterWebAuth2.authenticate(
         url: authUrl.toString(),
-        callbackUrlScheme: 'https',  // Match the https scheme
+        callbackUrlScheme: 'https',
+        options: const FlutterWebAuth2Options(
+          intentFlags: ephemeralIntentFlags,
+        ),
       );
       
       if (kDebugMode) {
@@ -101,21 +104,38 @@ class SpotifyAuthService extends ChangeNotifier {
       }
       
       // Extract access token from URL fragment (after #)
-      // Format: https://developer.spotify.com/#access_token=XXX&token_type=Bearer&expires_in=3600
+      // Format: https://byflowt.github.io/spotify-ai-music-app/#access_token=XXX&token_type=Bearer&expires_in=3600
       final uri = Uri.parse(result);
       
       // Parse fragment manually since Uri doesn't parse # fragments as query params
       String? accessToken;
       int? expiresIn;
       
+      // Try to parse fragment
       if (uri.fragment.isNotEmpty) {
+        if (kDebugMode) {
+          print('Fragment: ${uri.fragment}');
+        }
         final fragmentParams = Uri.splitQueryString(uri.fragment);
         accessToken = fragmentParams['access_token'];
         expiresIn = int.tryParse(fragmentParams['expires_in'] ?? '3600');
       }
       
+      // Also try query params (in case it's in the query instead of fragment)
+      if (accessToken == null && uri.queryParameters.isNotEmpty) {
+        accessToken = uri.queryParameters['access_token'];
+        expiresIn = int.tryParse(uri.queryParameters['expires_in'] ?? '3600');
+      }
+      
       if (accessToken == null) {
-        throw Exception('No access token received');
+        if (kDebugMode) {
+          print('Failed to extract token from URL: $result');
+        }
+        throw Exception('No access token received from Spotify');
+      }
+      
+      if (kDebugMode) {
+        print('Successfully extracted access token');
       }
       
       // Store tokens
