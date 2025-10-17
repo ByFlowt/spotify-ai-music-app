@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/track_model.dart';
+import '../config/api_config.dart';
 
 class ShazamService extends ChangeNotifier {
   static const String _baseUrl = 'https://api.audd.io';
@@ -11,19 +12,25 @@ class ShazamService extends ChangeNotifier {
   
   bool get isLoading => _isLoading;
   String? get error => _error;
-  
-  // Alternative: Using free music recognition API
-  // For production, you should use proper Shazam API credentials
-  
+
   /// Search songs by audio (using file or URL)
+  /// Requires AUDD_API_KEY to be configured in .env
   Future<List<Track>> recognizeAudio(String audioUrl) async {
+    final apiKey = ApiConfig.auddApiKey;
+    
+    if (apiKey.isEmpty) {
+      _error = 'AUDD API key not configured. Please set AUDD_API_KEY in .env file';
+      notifyListeners();
+      return [];
+    }
+    
     _isLoading = true;
     _error = null;
     notifyListeners();
     
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/?method=recognizeSong&return=spotify&file_url=$audioUrl'),
+        Uri.parse('$_baseUrl/?method=recognizeSong&return=spotify&file_url=$audioUrl&api_token=$apiKey'),
         headers: {
           'Content-Type': 'application/json',
         },

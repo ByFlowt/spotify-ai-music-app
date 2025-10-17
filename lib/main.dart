@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_page.dart';
@@ -13,8 +14,28 @@ import 'services/ai_playlist_service.dart';
 import 'services/spotify_auth_service.dart';
 import 'services/gemini_ai_service.dart';
 import 'services/shazam_service.dart';
+import 'config/api_config.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load environment variables from .env file
+  try {
+    await dotenv.load(fileName: '.env');
+    // Optional: Log configuration status for debugging
+    // ApiConfig.logStatus();
+    
+    // Check for missing required API keys
+    final missing = ApiConfig.validateConfiguration();
+    if (missing.isNotEmpty) {
+      print('⚠️  Warning: Missing API keys: ${missing.join(', ')}');
+      print('Please copy .env.example to .env and fill in your API keys');
+    }
+  } catch (e) {
+    print('⚠️  .env file not found or failed to load: $e');
+    print('Some features may not work. See .env.example for setup instructions.');
+  }
+  
   runApp(const MyApp());
 }
 
