@@ -26,13 +26,14 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SpotifyAuthService()),
         ChangeNotifierProvider(create: (_) => SpotifyService()),
         ChangeNotifierProvider(create: (_) => PlaylistManager()),
-        ChangeNotifierProxyProvider2<SpotifyService, PlaylistManager, AIPlaylistService>(
+        ChangeNotifierProxyProvider3<SpotifyService, PlaylistManager, SpotifyAuthService, AIPlaylistService>(
           create: (context) => AIPlaylistService(
             context.read<SpotifyService>(),
             context.read<PlaylistManager>(),
+            context.read<SpotifyAuthService>(),
           ),
-          update: (context, spotify, playlist, previous) =>
-              previous ?? AIPlaylistService(spotify, playlist),
+          update: (context, spotify, playlist, auth, previous) =>
+              previous ?? AIPlaylistService(spotify, playlist, auth),
         ),
       ],
       child: MaterialApp(
@@ -290,24 +291,47 @@ class MainNavigator extends StatefulWidget {
 class _MainNavigatorState extends State<MainNavigator> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [
-    const HomePage(),
-    const SearchPage(),
-    const AIPlaylistPage(),
-    const SongSearchPage(),
-    const MyPlaylistPage(),
-  ];
+  List<Widget> _getPages() {
+    if (widget.isGuest) {
+      return [
+        const HomePage(),
+        const SearchPage(),
+        const SongSearchPage(),
+      ];
+    } else {
+      return [
+        const HomePage(),
+        const SearchPage(),
+        const AIPlaylistPage(),
+        const SongSearchPage(),
+        const MyPlaylistPage(),
+      ];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final playlistManager = context.watch<PlaylistManager>();
+    final pages = _getPages();
     
     return Scaffold(
       body: Stack(
         children: [
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
-            child: _pages[_currentIndex],
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.0, 0.1),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: pages[_currentIndex],
           ),
           // Show guest mode banner if in guest mode
           if (widget.isGuest)
@@ -354,45 +378,63 @@ class _MainNavigatorState extends State<MainNavigator> {
             _currentIndex = index;
           });
         },
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.person_search_outlined),
-            selectedIcon: Icon(Icons.person_search),
-            label: 'Artists',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.auto_awesome_outlined),
-            selectedIcon: Icon(Icons.auto_awesome),
-            label: 'AI',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.music_note_outlined),
-            selectedIcon: Icon(Icons.music_note),
-            label: 'Songs',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              label: playlistManager.count > 0 
-                  ? Text('${playlistManager.count}')
-                  : null,
-              isLabelVisible: playlistManager.count > 0,
-              child: const Icon(Icons.playlist_play_outlined),
-            ),
-            selectedIcon: Badge(
-              label: playlistManager.count > 0 
-                  ? Text('${playlistManager.count}')
-                  : null,
-              isLabelVisible: playlistManager.count > 0,
-              child: const Icon(Icons.playlist_play),
-            ),
-            label: 'My List',
-          ),
-        ],
+        destinations: widget.isGuest
+            ? [
+                const NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home),
+                  label: 'Home',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.person_search_outlined),
+                  selectedIcon: Icon(Icons.person_search),
+                  label: 'Artists',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.music_note_outlined),
+                  selectedIcon: Icon(Icons.music_note),
+                  label: 'Songs',
+                ),
+              ]
+            : [
+                const NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home),
+                  label: 'Home',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.person_search_outlined),
+                  selectedIcon: Icon(Icons.person_search),
+                  label: 'Artists',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.auto_awesome_outlined),
+                  selectedIcon: Icon(Icons.auto_awesome),
+                  label: 'AI',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.music_note_outlined),
+                  selectedIcon: Icon(Icons.music_note),
+                  label: 'Songs',
+                ),
+                NavigationDestination(
+                  icon: Badge(
+                    label: playlistManager.count > 0 
+                        ? Text('${playlistManager.count}')
+                        : null,
+                    isLabelVisible: playlistManager.count > 0,
+                    child: const Icon(Icons.playlist_play_outlined),
+                  ),
+                  selectedIcon: Badge(
+                    label: playlistManager.count > 0 
+                        ? Text('${playlistManager.count}')
+                        : null,
+                    isLabelVisible: playlistManager.count > 0,
+                    child: const Icon(Icons.playlist_play),
+                  ),
+                  label: 'My List',
+                ),
+              ],
       ),
     );
   }

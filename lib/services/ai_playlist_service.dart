@@ -3,10 +3,12 @@ import 'package:flutter/foundation.dart';
 import '../models/track_model.dart';
 import 'spotify_service.dart';
 import 'playlist_manager.dart';
+import 'spotify_auth_service.dart';
 
 class AIPlaylistService extends ChangeNotifier {
   final SpotifyService _spotifyService;
   final PlaylistManager _playlistManager;
+  final SpotifyAuthService _authService;
   
   bool _isGenerating = false;
   double _progress = 0.0;
@@ -20,7 +22,7 @@ class AIPlaylistService extends ChangeNotifier {
   List<Track> get generatedTracks => _generatedTracks;
   Map<String, double> get genrePreferences => _genrePreferences;
 
-  AIPlaylistService(this._spotifyService, this._playlistManager);
+  AIPlaylistService(this._spotifyService, this._playlistManager, this._authService);
 
   // Simulate listening history analysis (in production, use real user data)
   Future<Map<String, dynamic>> analyzeListeningHistory() async {
@@ -96,7 +98,7 @@ class AIPlaylistService extends ChangeNotifier {
       _progress = 0.4;
       notifyListeners();
       
-      final seeds = _getSeedData(analysis);
+      final seeds = await _getSeedData(analysis);
       
       // Step 4: Generate recommendations in batches
       _currentStep = 'Generating personalized recommendations...';
@@ -197,8 +199,46 @@ class AIPlaylistService extends ChangeNotifier {
     }
   }
 
-  Map<String, List<String>> _getSeedData(Map<String, dynamic> analysis) {
-    // Get top genres
+  Future<Map<String, List<String>>> _getSeedData(Map<String, dynamic> analysis) async {
+    // Try to get real user data first
+    try {
+      final userToken = _authService.accessToken;
+      if (userToken != null && _authService.isAuthenticated) {
+        final userTopTracks = await _spotifyService.getUserTopTracks(
+          userAccessToken: userToken,
+          limit: 3,
+        );
+        final userTopArtists = await _spotifyService.getUserTopArtists(
+          userAccessToken: userToken,
+          limit: 2,
+        );
+        
+        if (userTopTracks.isNotEmpty || userTopArtists.isNotEmpty) {
+          // Use real user data
+          final seedTracks = userTopTracks.take(2).map((t) => t.id).toList();
+          final seedArtists = userTopArtists.take(2).map((a) => a.id).toList();
+          
+          // Get genres from top artists
+          final topGenres = userTopArtists
+              .expand((artist) => artist.genres)
+              .toSet()
+              .take(2)
+              .toList();
+          
+          return {
+            'genres': topGenres.isNotEmpty ? topGenres : _getDefaultGenres(),
+            'tracks': seedTracks,
+            'artists': seedArtists,
+          };
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Could not fetch user data, using fallback: $e');
+      }
+    }
+    
+    // Fallback to simulated data
     final topGenres = (analysis['topGenres'] as List)
         .take(2)
         .map((e) => e.key as String)
@@ -227,6 +267,10 @@ class AIPlaylistService extends ChangeNotifier {
       'tracks': seedTracks,
       'artists': <String>[], // Could extract from user tracks
     };
+  }
+  
+  List<String> _getDefaultGenres() {
+    return ['pop', 'rock'];
   }
 
   List<Track> _selectBestTracks(

@@ -7,6 +7,8 @@ import '../models/track_model.dart';
 import '../models/artist_model.dart';
 import 'track_detail_page.dart';
 import 'artist_detail_page.dart';
+import '../widgets/shimmer_loading.dart';
+import '../utils/animations.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -114,80 +116,127 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       body: SafeArea(
-        child: _isLoading
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(color: colorScheme.primary),
-                    const SizedBox(height: 16),
-                    Text('Loading your music...', style: textTheme.titleMedium),
-                  ],
-                ),
-              )
-            : RefreshIndicator(
-                onRefresh: _loadPersonalizedContent,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 20),
-                        
-                        // Personalized Greeting
-                        _buildGreeting(context, authService, colorScheme, textTheme),
-                        
-                        const SizedBox(height: 32),
-                        
-                        if (isAuthenticated) ...[
-                          // Recently Played
-                          if (_recentlyPlayed != null && _recentlyPlayed!.isNotEmpty) ...[
-                            _buildSectionHeader('🕒 Recently Played', colorScheme, textTheme),
-                            const SizedBox(height: 16),
-                            _buildTracksList(_recentlyPlayed!),
-                            const SizedBox(height: 32),
-                          ],
-                          
-                          // Top Tracks
-                          if (_topTracks != null && _topTracks!.isNotEmpty) ...[
-                            _buildSectionHeader('🎵 Your Top Tracks', colorScheme, textTheme),
-                            const SizedBox(height: 16),
-                            _buildTracksList(_topTracks!),
-                            const SizedBox(height: 32),
-                          ],
-                          
-                          // Top Artists
-                          if (_topArtists != null && _topArtists!.isNotEmpty) ...[
-                            _buildSectionHeader('👤 Your Top Artists', colorScheme, textTheme),
-                            const SizedBox(height: 16),
-                            _buildArtistsList(_topArtists!),
-                            const SizedBox(height: 32),
-                          ],
-                        ] else ...[
-                          // Guest mode - show features
-                          _buildGuestModeFeatures(context, colorScheme, textTheme),
-                        ],
-                        
-                        const SizedBox(height: 24),
-                        
-                        // Footer
-                        Center(
-                          child: Text(
-                            'Powered by Spotify API',
-                            style: textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
+        child: RefreshIndicator(
+          onRefresh: _loadPersonalizedContent,
+          color: colorScheme.primary,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  
+                  // Personalized Greeting with animation
+                  SlideInAnimation(
+                    delay: 0,
+                    child: _buildGreeting(context, authService, colorScheme, textTheme),
+                  ),
+                  
+                  const SizedBox(height: 32),
+                  
+                  if (isAuthenticated) ...[
+                    // Recently Played
+                    if (_isLoading) ...[
+                      SlideInAnimation(
+                        delay: 100,
+                        child: _buildSectionHeader('🕒 Recently Played', colorScheme, textTheme),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 200,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: 5,
+                          itemBuilder: (context, index) => const TrackShimmer(),
                         ),
-                        
-                        const SizedBox(height: 40),
-                      ],
+                      ),
+                      const SizedBox(height: 32),
+                    ] else if (_recentlyPlayed != null && _recentlyPlayed!.isNotEmpty) ...[
+                      SlideInAnimation(
+                        delay: 100,
+                        child: _buildSectionHeader('🕒 Recently Played', colorScheme, textTheme),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTracksList(_recentlyPlayed!, 150),
+                      const SizedBox(height: 32),
+                    ],
+                    
+                    // Top Tracks
+                    if (_isLoading) ...[
+                      SlideInAnimation(
+                        delay: 200,
+                        child: _buildSectionHeader('🎵 Your Top Tracks', colorScheme, textTheme),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 200,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: 5,
+                          itemBuilder: (context, index) => const TrackShimmer(),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ] else if (_topTracks != null && _topTracks!.isNotEmpty) ...[
+                      SlideInAnimation(
+                        delay: 200,
+                        child: _buildSectionHeader('🎵 Your Top Tracks', colorScheme, textTheme),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTracksList(_topTracks!, 250),
+                      const SizedBox(height: 32),
+                    ],
+                    
+                    // Top Artists
+                    if (_isLoading) ...[
+                      SlideInAnimation(
+                        delay: 300,
+                        child: _buildSectionHeader('👤 Your Top Artists', colorScheme, textTheme),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 180,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: 5,
+                          itemBuilder: (context, index) => const ArtistShimmer(),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ] else if (_topArtists != null && _topArtists!.isNotEmpty) ...[
+                      SlideInAnimation(
+                        delay: 300,
+                        child: _buildSectionHeader('👤 Your Top Artists', colorScheme, textTheme),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildArtistsList(_topArtists!, 350),
+                      const SizedBox(height: 32),
+                    ],
+                  ] else ...[
+                    // Guest mode - show features
+                    _buildGuestModeFeatures(context, colorScheme, textTheme),
+                  ],
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Footer
+                  Center(
+                    child: Text(
+                      'Powered by Spotify API',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
-                ),
+                  
+                  const SizedBox(height: 40),
+                ],
               ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -201,62 +250,82 @@ class _HomePageState extends State<HomePage> {
     final userName = authService.userName;
     final greeting = _getPersonalizedGreeting(userName);
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.primaryContainer,
-            colorScheme.secondaryContainer,
+    return PulseAnimation(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.primaryContainer,
+              colorScheme.secondaryContainer,
+              colorScheme.tertiaryContainer,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.primary.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  colorScheme.primary,
-                  colorScheme.secondary,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.primary,
+                    colorScheme.secondary,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.primary.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.circular(20),
+              child: Icon(
+                authService.isAuthenticated ? Icons.person : Icons.music_note_rounded,
+                size: 40,
+                color: Colors.white,
+              ),
             ),
-            child: Icon(
-              authService.isAuthenticated ? Icons.person : Icons.music_note_rounded,
-              size: 40,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  greeting,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: colorScheme.onPrimaryContainer,
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    greeting,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: colorScheme.onPrimaryContainer,
+                      height: 1.1,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  authService.isAuthenticated
-                      ? 'Your personalized music awaits'
-                      : 'Discover amazing music',
-                  style: textTheme.bodyLarge?.copyWith(
-                    color: colorScheme.onPrimaryContainer.withOpacity(0.8),
+                  const SizedBox(height: 4),
+                  Text(
+                    authService.isAuthenticated
+                        ? 'Your personalized music awaits'
+                        : 'Discover amazing music',
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onPrimaryContainer.withOpacity(0.8),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -271,15 +340,17 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildTracksList(List<Track> tracks) {
+  Widget _buildTracksList(List<Track> tracks, int baseDelay) {
     return SizedBox(
       height: 200,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: tracks.length,
         itemBuilder: (context, index) {
-          final track = tracks[index];
-          return _buildTrackCard(track);
+          return ScaleInAnimation(
+            delay: baseDelay + (index * 50),
+            child: _buildTrackCard(tracks[index]),
+          );
         },
       ),
     );
@@ -289,89 +360,110 @@ class _HomePageState extends State<HomePage> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 16),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TrackDetailPage(track: track),
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Album Art
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: track.imageUrl != null
-                    ? Image.network(
-                        track.imageUrl!,
-                        width: 160,
-                        height: 120,
-                        fit: BoxFit.cover,
-                      )
-                    : Container(
-                        width: 160,
-                        height: 120,
-                        color: colorScheme.surfaceVariant,
-                        child: Icon(
-                          Icons.music_note,
-                          size: 40,
+    return Hero(
+      tag: 'track-${track.id}',
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 16),
+        child: Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      TrackDetailPage(track: track),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0.0, 0.1),
+                          end: Offset.zero,
+                        ).animate(CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                        )),
+                        child: child,
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Album Art
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  child: track.imageUrl != null
+                      ? Image.network(
+                          track.imageUrl!,
+                          width: 160,
+                          height: 120,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          width: 160,
+                          height: 120,
+                          color: colorScheme.surfaceVariant,
+                          child: Icon(
+                            Icons.music_note,
+                            size: 40,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        track.name,
+                        style: textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        track.artistName,
+                        style: textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      track.name,
-                      style: textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      track.artistName,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildArtistsList(List<Artist> artists) {
+  Widget _buildArtistsList(List<Artist> artists, int baseDelay) {
     return SizedBox(
       height: 180,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: artists.length,
         itemBuilder: (context, index) {
-          final artist = artists[index];
-          return _buildArtistCard(artist);
+          return ScaleInAnimation(
+            delay: baseDelay + (index * 50),
+            child: _buildArtistCard(artists[index]),
+          );
         },
       ),
     );
@@ -381,64 +473,82 @@ class _HomePageState extends State<HomePage> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      width: 140,
-      margin: const EdgeInsets.only(right: 16),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ArtistDetailPage(artist: artist),
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            children: [
-              // Artist Image
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: artist.imageUrl != null
-                    ? Image.network(
-                        artist.imageUrl!,
-                        width: 140,
-                        height: 110,
-                        fit: BoxFit.cover,
-                      )
-                    : Container(
-                        width: 140,
-                        height: 110,
-                        color: colorScheme.surfaceVariant,
-                        child: Icon(
-                          Icons.person,
-                          size: 40,
-                          color: colorScheme.onSurfaceVariant,
+    return Hero(
+      tag: 'artist-${artist.id}',
+      child: Container(
+        width: 140,
+        margin: const EdgeInsets.only(right: 16),
+        child: Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      ArtistDetailPage(artist: artist),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: Tween<double>(begin: 0.9, end: 1.0).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          ),
                         ),
+                        child: child,
                       ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    Text(
-                      artist.name,
-                      style: textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              ),
-            ],
+              );
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Column(
+              children: [
+                // Artist Image
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  child: artist.imageUrl != null
+                      ? Image.network(
+                          artist.imageUrl!,
+                          width: 140,
+                          height: 110,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          width: 140,
+                          height: 110,
+                          color: colorScheme.surfaceVariant,
+                          child: Icon(
+                            Icons.person,
+                            size: 40,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      Text(
+                        artist.name,
+                        style: textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -452,29 +562,39 @@ class _HomePageState extends State<HomePage> {
   ) {
     return Column(
       children: [
-        _buildFeatureCard(
-          context,
-          icon: Icons.search_rounded,
-          title: 'Intelligent Search',
-          description: 'Search for artists and discover their music instantly.',
-          gradient: LinearGradient(
-            colors: [
-              colorScheme.primaryContainer,
-              colorScheme.secondaryContainer,
-            ],
+        SlideInAnimation(
+          delay: 100,
+          child: _buildFeatureCard(
+            context,
+            icon: Icons.search_rounded,
+            title: 'Intelligent Search',
+            description: 'Search for artists and discover their music instantly.',
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                colorScheme.primaryContainer,
+                colorScheme.secondaryContainer,
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 16),
-        _buildFeatureCard(
-          context,
-          icon: Icons.auto_awesome,
-          title: 'Login for More',
-          description: 'Login to see your top tracks, artists, and get AI-powered playlist recommendations!',
-          gradient: LinearGradient(
-            colors: [
-              colorScheme.secondaryContainer,
-              colorScheme.tertiaryContainer,
-            ],
+        SlideInAnimation(
+          delay: 200,
+          child: _buildFeatureCard(
+            context,
+            icon: Icons.auto_awesome,
+            title: 'Login for More',
+            description: 'Login to see your top tracks, artists, and get AI-powered playlist recommendations!',
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                colorScheme.secondaryContainer,
+                colorScheme.tertiaryContainer,
+              ],
+            ),
           ),
         ),
       ],
@@ -494,7 +614,14 @@ class _HomePageState extends State<HomePage> {
     return Container(
       decoration: BoxDecoration(
         gradient: gradient,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withOpacity(0.2),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -502,10 +629,17 @@ class _HomePageState extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.shadow.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Icon(
                 icon,
