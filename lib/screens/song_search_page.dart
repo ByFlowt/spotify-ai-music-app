@@ -46,21 +46,21 @@ class _SongSearchPageState extends State<SongSearchPage> {
       // Search for current popular songs across different genres
       final queries = ['top hits 2024', 'viral hits', 'trending now'];
       List<Track> allTracks = [];
-      
+
       for (final query in queries) {
         final results = await spotifyService.searchTracks(query);
         allTracks.addAll(results);
       }
-      
+
       // Remove duplicates and sort by popularity
       final uniqueTracks = <String, Track>{};
       for (final track in allTracks) {
-        if (!uniqueTracks.containsKey(track.id) || 
+        if (!uniqueTracks.containsKey(track.id) ||
             track.popularity > (uniqueTracks[track.id]?.popularity ?? 0)) {
           uniqueTracks[track.id] = track;
         }
       }
-      
+
       final sortedTracks = uniqueTracks.values.toList()
         ..sort((a, b) => b.popularity.compareTo(a.popularity));
 
@@ -890,10 +890,11 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
             // Search Spotify to get the real track data
             final spotifyService = context.read<SpotifyService>();
             final searchQuery = '$title $artist';
-            final spotifyResults = await spotifyService.searchTracks(searchQuery);
-            
+            final spotifyResults =
+                await spotifyService.searchTracks(searchQuery);
+
             Track? identifiedTrack;
-            
+
             if (spotifyResults.isNotEmpty) {
               // Use the first result from Spotify (most relevant)
               identifiedTrack = spotifyResults.first;
@@ -915,12 +916,43 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
               );
             }
 
-            // Add to identified songs playlist
+            // Add to identified songs playlist and main playlist
             final playlistManager = context.read<PlaylistManager>();
             await playlistManager.addIdentifiedSong(identifiedTrack);
+            await playlistManager.addTrack(identifiedTrack);
 
-            _showSongIdentified(identifiedTrack.name, identifiedTrack.artistName);
+            if (mounted) {
+              setState(() {
+                _statusText = 'Tap to start listening...';
+                _isProcessing = false;
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.library_music, color: Colors.white),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '"${identifiedTrack.name}" saved to My List.',
+                        ),
+                      ),
+                    ],
+                  ),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+
+            if (mounted) {
+              _showSongIdentified(identifiedTrack);
+            }
           } else {
+            setState(() {
+              _statusText = 'Tap to start listening...';
+              _isProcessing = false;
+            });
             _showError(
                 'Could not identify the song. Please try again or search manually.');
           }
@@ -979,44 +1011,92 @@ class _ShazamRecordingDialogState extends State<ShazamRecordingDialog>
     }
   }
 
-  void _showSongIdentified(String title, String artist) {
+  void _showSongIdentified(Track track) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 12),
-            Text('Song Identified!'),
+            Icon(Icons.check_circle, color: colorScheme.primary),
+            const SizedBox(width: 12),
+            const Text('Song Identified!'),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: track.imageUrl != null
+                  ? Image.network(
+                      track.imageUrl!,
+                      height: 120,
+                      width: 120,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      height: 120,
+                      width: 120,
+                      color: colorScheme.surfaceContainerHighest,
+                      child: Icon(
+                        Icons.music_note,
+                        size: 48,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 16),
             Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              track.name,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
             const SizedBox(height: 4),
             Text(
-              artist,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
+              track.artistName,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
             ),
+            if (track.albumName != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                track.albumName!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ],
             const SizedBox(height: 16),
-            const Text('Search for this song to add it to your playlist!'),
+            Text(
+              'Saved to My List under "Identified Songs".',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TrackDetailPage(track: track),
+                ),
+              );
+            },
+            child: const Text('View Details'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
           ),
         ],
       ),
