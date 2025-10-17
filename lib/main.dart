@@ -68,7 +68,16 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeService()),
         ChangeNotifierProvider(create: (_) => SpotifyAuthService()),
-        ChangeNotifierProvider(create: (_) => SpotifyService()),
+        ChangeNotifierProxyProvider<SpotifyAuthService, SpotifyService>(
+          create: (_) => SpotifyService(),
+          update: (context, auth, spotify) {
+            // Sync user access token from auth service to spotify service
+            if (auth.isAuthenticated && auth.accessToken != null) {
+              spotify?.setUserAccessToken(auth.accessToken!);
+            }
+            return spotify!;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => PlaylistManager()),
         ChangeNotifierProvider(create: (_) => ShazamService()),
         Provider(create: (_) => GeminiAIService()),
